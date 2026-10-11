@@ -1,5 +1,7 @@
 # Intake Integrity Lab v0.6.2
 
+[![test](https://github.com/dokarpov/intake-integrity-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/dokarpov/intake-integrity-lab/actions/workflows/ci.yml)
+
 **A production-oriented intake integrity and compliance control plane for sales systems, CRM and 1C.**
 
 Most sales systems assume the first record is already correct. This project treats intake as a control boundary: identity can be ambiguous, people can have different roles, retries can create duplicates, browser-side decisions cannot be trusted, and a material action should leave evidence that can later be verified.
@@ -70,6 +72,22 @@ The system can run with `dedupMode: "off"`. You still get validation, consent ga
 - Durable outbox with retry/backoff and terminal dead-letter state.
 - Runtime credentials are injected only at send time and stripped before persistence.
 - Audited delivery attempt/result without copying raw credential-bearing payloads into the ledger.
+
+## Evidence today
+
+| Evidence | Status |
+|---|---|
+| Local service / operator control plane | implemented |
+| Unit/service tests | **76/76 passing** |
+| PostgreSQL integration in GitHub CI | **passing against a real PostgreSQL service** |
+| Human review / assignment / SLA workflow | implemented |
+| Durable outbox + idempotency boundary | implemented |
+| AWS Object Lock / KMS live suite | available, runs only with real sandbox resources |
+| 1C live suite | available, runs only with a real sandbox endpoint |
+| Production customer deployment | **not claimed** |
+| Compliance certification | **not claimed** |
+
+This distinction is intentional: the repository proves product architecture and executable control behavior; it does not turn synthetic fixtures or optional provider adapters into customer outcomes.
 
 ## Operator UX
 
