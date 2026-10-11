@@ -80,6 +80,7 @@ The system can run with `dedupMode: "off"`. You still get validation, consent ga
 | Local service / operator control plane | implemented |
 | Unit/service tests | **76/76 passing** |
 | PostgreSQL integration in GitHub CI | **passing against a real PostgreSQL service** |
+| Operator-console Chromium smoke (320 / 390 / 768 / 1440 px) | **passing in CI** |
 | Human review / assignment / SLA workflow | implemented |
 | Durable outbox + idempotency boundary | implemented |
 | AWS Object Lock / KMS live suite | available, runs only with real sandbox resources |
