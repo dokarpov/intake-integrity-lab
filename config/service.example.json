@@ -1,0 +1,116 @@
+{
+  "auth": {
+    "mode": "oidc",
+    "issuer": "https://identity.example.com/",
+    "audience": "intake-integrity-api",
+    "jwksUri": "https://identity.example.com/.well-known/jwks.json",
+    "rolesClaim": "roles",
+    "tenantClaim": "tenant_id"
+  },
+  "intake": {
+    "dedupMode": "off"
+  },
+  "policies": {
+    "intake": {
+      "purpose": {
+        "code": "sales_intake",
+        "version": "1.0"
+      },
+      "legalBasis": {
+        "basis": "contract",
+        "reference": "REPLACE_WITH_APPROVED_POLICY"
+      },
+      "retention": {
+        "class": "contractual",
+        "policyVersion": "REPLACE_WITH_APPROVED_RETENTION"
+      },
+      "policyRefs": [
+        "privacy-policy:REPLACE"
+      ]
+    },
+    "review": {
+      "purpose": {
+        "code": "identity_review",
+        "version": "1.0"
+      },
+      "legalBasis": {
+        "basis": "contract",
+        "reference": "REPLACE_WITH_APPROVED_POLICY"
+      },
+      "retention": {
+        "class": "contractual",
+        "policyVersion": "REPLACE_WITH_APPROVED_RETENTION"
+      }
+    },
+    "audit": {
+      "purpose": {
+        "code": "accountability_audit",
+        "version": "1.0"
+      },
+      "legalBasis": {
+        "basis": "legal_obligation",
+        "reference": "REPLACE_WITH_APPROVED_POLICY"
+      },
+      "retention": {
+        "class": "legal",
+        "policyVersion": "REPLACE_WITH_APPROVED_RETENTION"
+      }
+    },
+    "dsr": {
+      "purpose": {
+        "code": "data_subject_rights",
+        "version": "1.0"
+      },
+      "legalBasis": {
+        "basis": "legal_obligation",
+        "reference": "REPLACE_WITH_APPROVED_POLICY"
+      },
+      "retention": {
+        "class": "legal",
+        "policyVersion": "REPLACE_WITH_APPROVED_RETENTION"
+      }
+    },
+    "policy": {
+      "purpose": {
+        "code": "compliance_policy_governance",
+        "version": "1.0"
+      },
+      "legalBasis": {
+        "basis": "not_applicable",
+        "reference": "internal-control"
+      },
+      "retention": {
+        "class": "security",
+        "policyVersion": "REPLACE_WITH_APPROVED_RETENTION"
+      }
+    },
+    "controls": {
+      "purpose": {
+        "code": "security_control_verification",
+        "version": "1.0"
+      },
+      "legalBasis": {
+        "basis": "not_applicable",
+        "reference": "internal-control"
+      },
+      "retention": {
+        "class": "security",
+        "policyVersion": "REPLACE_WITH_APPROVED_RETENTION"
+      }
+    },
+    "integration": {
+      "purpose": {
+        "code": "crm_delivery",
+        "version": "1.0"
+      },
+      "legalBasis": {
+        "basis": "contract",
+        "reference": "REPLACE_WITH_APPROVED_POLICY"
+      },
+      "retention": {
+        "class": "contractual",
+        "policyVersion": "REPLACE_WITH_APPROVED_RETENTION"
+      }
+    }
+  }
+}

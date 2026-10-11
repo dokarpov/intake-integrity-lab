@@ -1,0 +1,50 @@
+[
+  {
+    "id": "one-consistent-match",
+    "input": {
+      "submitterName": "Jamie Lee",
+      "phone": "5550000202",
+      "representativeName": "Jamie Lee",
+      "learnerName": "Casey Lee",
+      "city": "Lakeview",
+      "consents": {"privacy": true, "dataProcessing": true, "marketing": false}
+    },
+    "expectedRoute": "existing"
+  },
+  {
+    "id": "multiple-family-records",
+    "input": {
+      "submitterName": "Alex Morgan",
+      "phone": "5550000101",
+      "representativeName": "Alex Morgan",
+      "learnerName": "",
+      "city": "Northport",
+      "consents": {"privacy": true, "dataProcessing": true, "marketing": false}
+    },
+    "expectedRoute": "choice"
+  },
+  {
+    "id": "one-parent-different-learner",
+    "input": {
+      "submitterName": "Alex Morgan",
+      "phone": "5550000101",
+      "representativeName": "Alex Morgan",
+      "learnerName": "Jordan Morgan",
+      "city": "Northport",
+      "consents": {"privacy": true, "dataProcessing": true, "marketing": false}
+    },
+    "expectedRoute": "review"
+  },
+  {
+    "id": "no-match",
+    "input": {
+      "submitterName": "Robin Stone",
+      "phone": "5550009999",
+      "representativeName": "Robin Stone",
+      "learnerName": "Avery Stone",
+      "city": "Eastbay",
+      "consents": {"privacy": true, "dataProcessing": true, "marketing": true}
+    },
+    "expectedRoute": "new"
+  }
+]

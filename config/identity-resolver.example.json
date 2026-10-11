@@ -1,0 +1,6 @@
+{
+  "baseUrl": "https://crm-sandbox.example.com",
+  "path": "/api/identity/resolve",
+  "timeoutMs": 5000,
+  "auth": { "type": "bearer_env", "envVar": "IDENTITY_RESOLVER_TOKEN" }
+}

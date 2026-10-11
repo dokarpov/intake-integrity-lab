@@ -1,0 +1,22 @@
+{
+  "baseUrl": "https://1c.example.com/sales",
+  "path": "/hs/intake/v1/lead",
+  "auth": {
+    "type": "basic_env",
+    "envVar": "ONE_C_AUTH"
+  },
+  "fieldMap": {
+    "ExternalIntakeId": "intakeId",
+    "CreatedAt": "submittedAt",
+    "Name": "primaryContact.name",
+    "Phone": "primaryContact.phone",
+    "Email": "primaryContact.email",
+    "Company": "primaryContact.company",
+    "Source": "source.channel",
+    "Campaign": "source.campaign",
+    "ProductCode": "sales.productCode",
+    "OfferCode": "sales.offerCode",
+    "ManagerExternalId": "sales.managerExternalId",
+    "Notes": "notes"
+  }
+}

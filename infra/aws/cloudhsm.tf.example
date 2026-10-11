@@ -1,0 +1,21 @@
+# Optional dedicated physical-HSM profile.
+# Copy to cloudhsm.tf only after providing private subnets in at least two AZs.
+# CloudHSM has non-trivial cost and operational requirements; it is intentionally
+# not part of the default module.
+
+variable "cloudhsm_subnet_ids" { type = list(string) }
+
+resource "aws_cloudhsm_v2_cluster" "ledger" {
+  hsm_type   = "hsm2m.medium"
+  subnet_ids = var.cloudhsm_subnet_ids
+  mode       = "FIPS"
+  tags       = merge(var.tags, { Name = "${var.name}-cloudhsm" })
+}
+
+resource "aws_cloudhsm_v2_hsm" "ledger" {
+  count      = length(var.cloudhsm_subnet_ids)
+  cluster_id = aws_cloudhsm_v2_cluster.ledger.cluster_id
+  subnet_id  = var.cloudhsm_subnet_ids[count.index]
+}
+
+output "cloudhsm_cluster_id" { value = aws_cloudhsm_v2_cluster.ledger.cluster_id }

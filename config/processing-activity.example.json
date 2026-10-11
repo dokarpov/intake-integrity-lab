@@ -1,0 +1,29 @@
+{
+  "activityId": "sales-intake",
+  "version": "1.0",
+  "controller": {
+    "name": "Example Controller",
+    "contact": "privacy@example.invalid",
+    "dpo": "dpo@example.invalid"
+  },
+  "purposes": [
+    "receive and route sales enquiries",
+    "create or update sales records",
+    "preserve an accountable history of material actions"
+  ],
+  "dataSubjectCategories": ["prospects", "customers", "authorized representatives"],
+  "personalDataCategories": ["contact", "identity", "sales context", "consent state"],
+  "recipients": ["configured CRM/ERP recipients"],
+  "internationalTransfers": [],
+  "retention": [
+    { "class": "standard", "rule": "example only; determine with legal/privacy owner" }
+  ],
+  "securityMeasures": [
+    "pseudonymous subject references in the audit ledger",
+    "SHA-256 event hash chain",
+    "signed Ed25519 checkpoints",
+    "restricted audit read/export roles",
+    "separate immutable production storage recommended",
+    "TLS for transport and managed secrets outside source code"
+  ]
+}

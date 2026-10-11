@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/schemas/audit-event.schema.json",
+  "title": "Compliance Audit Event",
+  "type": "object",
+  "required": ["schemaVersion", "ledgerId", "tenantId", "eventId", "sequence", "recordedAt", "actor", "action", "result", "purpose", "legalBasis", "object", "previousEventHash", "eventHash"],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "eventId": { "type": "string" },
+    "sequence": { "type": "integer", "minimum": 1 },
+    "actor": {
+      "type": "object",
+      "required": ["type", "id"],
+      "properties": { "type": { "enum": ["human", "system", "service", "external"] }, "id": { "type": "string" }, "role": { "type": "string" } },
+      "additionalProperties": false
+    },
+    "purpose": { "type": "object", "required": ["code", "version"] },
+    "legalBasis": { "type": "object", "required": ["basis"] },
+    "object": { "type": "object", "required": ["type", "ref"] },
+    "dataClasses": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "policyRefs": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "previousEventHash": { "type": ["string", "null"] },
+    "eventHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

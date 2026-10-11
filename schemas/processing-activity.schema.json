@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/schemas/processing-activity.schema.json",
+  "title": "Processing Activity Snapshot",
+  "type": "object",
+  "required": ["activityId", "controller", "purposes", "dataSubjectCategories", "personalDataCategories", "retention", "securityMeasures"],
+  "properties": {
+    "activityId": { "type": "string", "minLength": 1 },
+    "version": { "type": "string" },
+    "controller": { "type": "object", "required": ["name"] },
+    "purposes": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+    "dataSubjectCategories": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+    "personalDataCategories": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+    "recipients": { "type": "array", "items": { "type": "string" } },
+    "internationalTransfers": { "type": "array" },
+    "retention": { "type": "array", "minItems": 1 },
+    "securityMeasures": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+  }
+}

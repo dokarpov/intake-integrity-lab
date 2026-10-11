@@ -1,0 +1,10 @@
+{
+  "strict": true,
+  "auditMode": "required",
+  "checkpoint": { "maxAgeSeconds": 300, "maxEvents": 1000, "signingProvider": "aws-kms" },
+  "immutableArchive": { "provider": "aws-s3-object-lock", "mode": "COMPLIANCE", "retentionDays": 2555, "quorum": 2 },
+  "encryption": { "provider": "aws-kms", "algorithm": "AES-256-GCM" },
+  "pseudonymization": { "provider": "aws-kms-hmac", "algorithm": "HMAC_SHA_256" },
+  "dualControl": ["legal_hold_release", "key_revoke", "key_destroy", "break_glass_access", "retention_policy_change", "large_audit_export", "archive_target_change"],
+  "monitoring": { "maxAnchorAgeSeconds": 3600, "alertOnAuditWriteFailure": true, "alertOnIntegrityFailure": true }
+}

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/schemas/checkpoint.schema.json",
+  "title": "Signed Ledger Checkpoint",
+  "type": "object",
+  "required": ["schemaVersion", "checkpointId", "keyId", "createdAt", "fromSequence", "toSequence", "eventCount", "firstEventHash", "terminalEventHash", "eventsDigest", "signature"],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "checkpointId": { "type": "string" },
+    "keyId": { "type": "string" },
+    "fromSequence": { "type": "integer", "minimum": 1 },
+    "toSequence": { "type": "integer", "minimum": 1 },
+    "eventCount": { "type": "integer", "minimum": 1 },
+    "firstEventHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "terminalEventHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "eventsDigest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "signature": { "type": "string" }
+  }
+}

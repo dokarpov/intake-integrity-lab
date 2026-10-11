@@ -1,0 +1,25 @@
+{
+  "policyId": "sales-intake-compliance-policy",
+  "version": "1.0",
+  "auditLoggingRequired": true,
+  "failClosedWhenAuditUnavailable": true,
+  "defaultPurpose": { "code": "sales_intake", "version": "1.0" },
+  "retentionClasses": {
+    "short": { "days": 30 },
+    "standard": { "days": 365 },
+    "contractual": { "days": 1825 },
+    "security": { "days": 365 },
+    "legal": { "days": null, "note": "Set only after legal review" }
+  },
+  "sensitiveLogging": {
+    "rawPiiAllowed": false,
+    "tokensAllowed": false,
+    "passwordsAllowed": false,
+    "payloadBodiesAllowed": false
+  },
+  "checkpoint": {
+    "everyEvents": 1000,
+    "signingAlgorithm": "Ed25519",
+    "hashAlgorithm": "SHA-256"
+  }
+}

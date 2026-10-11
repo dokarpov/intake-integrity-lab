@@ -1,0 +1,16 @@
+{
+  "baseUrl": "https://1c.example.com/sales",
+  "entitySet": "Catalog_SalesLeads",
+  "auth": {
+    "type": "basic_env",
+    "envVar": "ONE_C_AUTH"
+  },
+  "fieldMap": {
+    "Description": "primaryContact.name",
+    "Phone": "primaryContact.phone",
+    "Email": "primaryContact.email",
+    "ExternalIntakeId": "intakeId",
+    "Source": "source.channel",
+    "ProductCode": "sales.productCode"
+  }
+}

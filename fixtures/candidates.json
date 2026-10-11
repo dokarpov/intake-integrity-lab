@@ -1,0 +1,23 @@
+[
+  {
+    "id": "case-101",
+    "phone": "5550000101",
+    "representativeName": "Alex Morgan",
+    "learnerName": "Sam Morgan",
+    "city": "Northport"
+  },
+  {
+    "id": "case-102",
+    "phone": "5550000101",
+    "representativeName": "Alex Morgan",
+    "learnerName": "Taylor Morgan",
+    "city": "Northport"
+  },
+  {
+    "id": "case-201",
+    "phone": "5550000202",
+    "representativeName": "Jamie Lee",
+    "learnerName": "Casey Lee",
+    "city": "Lakeview"
+  }
+]
