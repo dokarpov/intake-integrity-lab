@@ -24,6 +24,7 @@ jobs:
           rm -f README.md
           tar -xJf /tmp/release.tar.xz -C .
           rm -rf .bootstrap
+          find .github/workflows -type f ! -name 'bootstrap.yml' -delete 2>/dev/null || true
       - name: Commit release
         shell: bash
         run: |
