@@ -1,4 +1,5 @@
-name: ci
+name: test
+
 on:
   push:
   pull_request:
@@ -6,13 +7,11 @@ on:
 jobs:
   unit:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node: [20, 22]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with:\n          node-version: ${{ matrix.node }}
+        with:
+          node-version: '22'
       - run: npm install --ignore-scripts
       - run: npm test
 
@@ -25,15 +24,19 @@ jobs:
           POSTGRES_DB: ledger
           POSTGRES_USER: ledger_admin
           POSTGRES_PASSWORD: local-dev-only
-        ports: ["5432:5432"]
+        ports:
+          - 5432:5432
         options: >-
-          --health-cmd="pg_isready -U ledger_admin -d ledger"
-          --health-interval=10s --health-timeout=5s --health-retries=5
+          --health-cmd "pg_isready -U ledger_admin -d ledger"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     env:
       TEST_DATABASE_URL: postgres://ledger_admin:local-dev-only@127.0.0.1:5432/ledger
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with:\n          node-version: 22
+        with:
+          node-version: '22'
       - run: npm install --no-save pg@8
       - run: npm run test:integration:postgres
