@@ -90,6 +90,8 @@ The system can run with `dedupMode: "off"`. You still get validation, consent ga
 
 This distinction is intentional: the repository proves product architecture and executable control behavior; it does not turn synthetic fixtures or optional provider adapters into customer outcomes.
 
+For the technical-vs-operator evidence plan, see [`docs/PRODUCT_VALIDATION.md`](docs/PRODUCT_VALIDATION.md).
+
 ## Operator UX
 
 The included console is organized around work rather than cryptography:
