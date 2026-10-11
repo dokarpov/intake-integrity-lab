@@ -3,7 +3,27 @@ name: test
 on:
   push:
     branches: [main]
+    paths:
+      - 'service/**'
+      - 'src/**'
+      - 'tests/**'
+      - 'scripts/**'
+      - 'examples/**'
+      - 'config/**'
+      - 'demo/**'
+      - 'package*.json'
+      - '.github/workflows/ci.yml'
   pull_request:
+    paths:
+      - 'service/**'
+      - 'src/**'
+      - 'tests/**'
+      - 'scripts/**'
+      - 'examples/**'
+      - 'config/**'
+      - 'demo/**'
+      - 'package*.json'
+      - '.github/workflows/ci.yml'
   workflow_dispatch:
 
 concurrency:
