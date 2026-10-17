@@ -8,6 +8,16 @@ A working control plane for incoming enquiries, identity uncertainty, consent, h
 
 > **Engineering prototype · v0.6.2.** This repository demonstrates executable controls. It does **not** claim production customer deployments, commercial traction, regulatory certification or real-world performance metrics.
 
+## Start with the product decision
+
+[Guided synthetic review scenario](https://dokarpov.github.io/intake-integrity-site/preview/) · [Public concept](https://dokarpov.github.io/intake-integrity-site/) · [Validation questions](docs/PRODUCT_VALIDATION.md)
+
+**Problem:** a shared phone number or incomplete identifier can represent several customers. A confidently wrong match can contaminate CRM ownership, contracts or later records.
+
+**Decision:** allow eligible clear records to proceed; hold ambiguous assignments for a reviewer with a reason and source context. Keep delivery idempotent and actions traceable separately from probabilistic identity matching.
+
+**What the engineering tests establish:** executable validation, service controls, review state and safe delivery behavior under defined fixtures. **What they do not establish:** live CRM/1C connectivity for customers, operator time savings, customer adoption or legal certification.
+
 ## Why this exists
 
 The first record often travels farther than anyone expects. A mistaken person, role or consent signal can affect CRM ownership, contracts, billing and access long after the form has been submitted.
