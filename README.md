@@ -10,7 +10,7 @@ A working control plane for incoming enquiries, identity uncertainty, consent, h
 
 ## Start with the product decision
 
-[Guided synthetic review scenario](https://dokarpov.github.io/intake-integrity-site/preview/) · [Public concept](https://dokarpov.github.io/intake-integrity-site/) · [Validation questions](docs/PRODUCT_VALIDATION.md)
+[The real problem that led to this decision](https://www.linkedin.com/posts/dokarpov_who-else-has-got-a-new-phone-number-and-immediately-activity-7509342496011767810-qi04) · [Guided synthetic review scenario](https://dokarpov.github.io/intake-integrity-site/preview/) · [Public concept](https://dokarpov.github.io/intake-integrity-site/) · [Validation questions](docs/PRODUCT_VALIDATION.md)
 
 **Problem:** a shared phone number or incomplete identifier can represent several customers. A confidently wrong match can contaminate CRM ownership, contracts or later records.
 
