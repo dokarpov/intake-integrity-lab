@@ -22,3 +22,12 @@ test('delivery status reports retry and recovery without exposing payload',async
  await store.claimDue({now:'2026-10-18T12:00:02Z'});await store.complete('outbox-test',{externalRecordRef:'CRM-42',statusCode:200});
  rows=await store.listForIntake({tenantId:'alpha',intakeId:'ENQ-3'});assert.equal(rows[0].status,'succeeded');assert.equal(rows[0].externalRecordRef,'CRM-42');assert.equal('request' in rows[0],false);
 });
+
+test('duplicate CRM delivery for same tenant and intake is rejected',async()=>{
+ const store=new MemoryOutboxStore();const item={tenantId:'alpha',intakeId:'ENQ-9',destination:'1c',request:{url:'https://example.invalid/1c',body:{name:'Example'}}};
+ await store.enqueue(item);
+ await assert.rejects(store.enqueue(item),/duplicate_delivery_intake_destination/);
+ assert.equal((await store.listForIntake({tenantId:'alpha',intakeId:'ENQ-9'})).length,1);
+ await store.enqueue({...item,tenantId:'beta'});
+ assert.equal((await store.listForIntake({tenantId:'beta',intakeId:'ENQ-9'})).length,1);
+});
