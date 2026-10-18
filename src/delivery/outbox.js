@@ -17,6 +17,7 @@ export class MemoryOutboxStore{
   async complete(id,{externalRecordRef,statusCode}={}){const x=this.items.get(id);if(!x)throw new Error('outbox_not_found');x.status=OUTBOX_STATUS.SUCCEEDED;x.completedAt=this.now();x.externalRecordRef=externalRecordRef;x.statusCode=statusCode;return structuredClone(x)}
   async fail(id,{error,statusCode,maxAttempts=6,now=new Date().toISOString(),backoff={}}={}){const x=this.items.get(id);if(!x)throw new Error('outbox_not_found');x.attempts+=1;x.lastError=String(error?.message||error);x.statusCode=statusCode??null;if(x.attempts>=maxAttempts){x.status=OUTBOX_STATUS.DEAD;x.deadAt=now}else{x.status=OUTBOX_STATUS.RETRY;x.nextAttemptAt=new Date(Date.parse(now)+backoffMs(x.attempts,backoff)).toISOString()}return structuredClone(x)}
   async get(id){const x=this.items.get(id);return x?structuredClone(x):null}
+  async listForIntake({tenantId,intakeId}={}){if(!tenantId||!intakeId)throw new Error('delivery_scope_required');return [...this.items.values()].filter(x=>x.tenantId===tenantId&&x.intakeId===intakeId).map(x=>({id:x.id,intakeId:x.intakeId,destination:x.destination,status:x.status,attempts:x.attempts,nextAttemptAt:x.nextAttemptAt,completedAt:x.completedAt||null,lastError:x.lastError||null,externalRecordRef:x.externalRecordRef||null}))}
   async stats(){const all=[...this.items.values()];return{pending:all.filter(x=>x.status==='pending'||x.status==='retry').length,inFlight:all.filter(x=>x.status==='in_flight').length,succeeded:all.filter(x=>x.status==='succeeded').length,dead:all.filter(x=>x.status==='dead').length}}
 }
 
