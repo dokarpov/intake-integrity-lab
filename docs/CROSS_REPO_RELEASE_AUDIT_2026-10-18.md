@@ -42,3 +42,12 @@ Target: enquiry enters automatically → safe cases delivered without extra oper
 
 ## Verification status
 Source inspected. New site scenario tests and app-boundary CSS committed separately. **No local or CI test execution, deployed API connectivity, visual screenshot comparison, or live CRM transaction has been independently verified during this audit.** Therefore neither repository is certified release-ready by this report.
+
+## Follow-up implementation pass
+- Lab added authenticated GET /api/deliveries?intakeId=... (permission: integration.read), with tenant-scoped memory/PostgreSQL lookups returning status metadata but not request bodies or credentials.
+- Lab added simulated unit coverage for tenant isolation, retry and eventual delivery success.
+- Lab operator console visual CSS moved toward the approved white direction, without changing the underlying role permissions.
+- Site deploy now gates publication on the original engine tests and twelve additional simulated scenarios; main page links to the MVP.
+- **Critical unresolved P0:** The review-resolution API currently marks a review resolved and appends audit evidence but does **not** enqueue a downstream delivery. The audited review queue stores intakeId and source context, not a durable canonical envelope for subsequent delivery. A correct fix needs a durable pending-intake store, atomic resolution/outbox transaction, and crash/replay tests. Do not claim review → CRM works.
+- **Critical unresolved P0:** No configured live CRM/1C provider, OIDC deployment or HTTPS operator host verified; GitHub Pages remains a simulation.
+- **Verification:** CI execution results have not been retrieved; source edits and test code are not equivalent to passed tests or a completed E2E run.
