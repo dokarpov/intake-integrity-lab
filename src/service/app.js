@@ -37,6 +37,11 @@ export function createApiHandler({authenticator,runtimes,policies,rateLimiter,in
         return sendJson(res,result.ok?202:422,{intakeId:result.envelope.intakeId,ok:result.ok,deliverable:result.deliverable??false,route:result.resolution?.route||'blocked',reviewId:result.reviewItem?.id||null,delivery:delivery?{id:delivery.id,status:delivery.status}:null,errors:result.validation?.errors||[]},{requestId});
       }
 
+      if(req.method==='GET'&&url.pathname==='/api/deliveries'){
+        requirePermission(principal,'integration.read');const intakeId=url.searchParams.get('intakeId');if(!intakeId||intakeId.length>160)throw Object.assign(new Error('valid_intake_id_required'),{statusCode:400});
+        const items=await rt.outbox.listForIntake({tenantId:principal.tenantId,intakeId});return sendJson(res,200,{items},{requestId});
+      }
+
       if(req.method==='GET'&&url.pathname==='/api/reviews'){
         requirePermission(principal,'review.read');const list=await rt.reviews.list({status:url.searchParams.get('status')||undefined,assignee:url.searchParams.get('assignee')||undefined,queue:url.searchParams.get('queue')||undefined,priority:url.searchParams.get('priority')||undefined,limit:parseLimit(url.searchParams.get('limit'),200)});const stats=await rt.reviews.stats?.()||null;return sendJson(res,200,{items:list,stats},{requestId});
       }
