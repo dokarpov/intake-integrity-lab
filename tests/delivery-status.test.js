@@ -8,7 +8,7 @@ test('delivery status only returns matching tenant and intake',async()=>{
  await store.enqueue({tenantId:'beta',intakeId:'ENQ-1',destination:'1c',request:{url:'https://example.invalid/1c',body:{name:'Other'}}});
  await store.enqueue({tenantId:'alpha',intakeId:'ENQ-2',destination:'1c',request:{url:'https://example.invalid/1c',body:{name:'Third'}}});
  const rows=await store.listForIntake({tenantId:'alpha',intakeId:'ENQ-1'});
- assert.equal(rows.length,1);assert.equal(rows[0].status,'pending');assert.equal(rows[0].intakeId,'ENQ-1');assert.equal('request' in rows[0],false);assert.equal('tenantId' in rows[0],false);
+ assert.equal(rows.length,1);assert.equal(rows[0].status,'pending');assert.equal(rows[0].intakeId,'ENQ-1');assert.equal('request' in rows[0],false);assert.equal('lastError' in rows[0],false);assert.equal('tenantId' in rows[0],false);
 });
 test('delivery status requires both tenant and intake',async()=>{
  const store=new MemoryOutboxStore();await assert.rejects(store.listForIntake({intakeId:'ENQ-1'}),/delivery_scope_required/);await assert.rejects(store.listForIntake({tenantId:'alpha'}),/delivery_scope_required/);
