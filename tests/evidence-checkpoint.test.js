@@ -137,3 +137,30 @@ test('invalid/empty/unrecognized policies fail before producing misleading findi
   ]},evidence:e,proposedAction}),/invalid_or_duplicate_rule/);
   assert.throws(()=>evaluate({policy:personalizedOrderPolicy,evidence:e,proposedAction:{type:'',subjectRef:'ORDER-104'}}),/proposed_action_context_required/);
 });
+
+test('the same evaluator detects invoice-versus-approved-terms differences without an invoicing status',()=>{
+  const policy={id:'example.invoice-check',version:'testing-1',rules:[
+    {id:'scope',type:'compare',left:{source:'quote',field:'orderId'},right:{source:'invoice',field:'orderId'}},
+    {id:'amount',type:'compare',left:{source:'quote',field:'amount'},right:{source:'invoice',field:'amount'}},
+    {id:'currency',type:'compare',left:{source:'quote',field:'currency'},right:{source:'invoice',field:'currency'}}
+  ]};
+  const evidence={quote:{fields:{orderId:'A17',amount:190,currency:'EUR'}},
+    invoice:{fields:{orderId:'A17',amount:200,currency:'EUR',status:'Draft'}}};
+  const result=evaluate({policy,evidence,proposedAction:{type:'issue_invoice',subjectRef:'A17'}});
+  assert.equal(result.findings[1].observation,'difference');
+  assert.equal(result.findings[2].observation,'consistent');
+  assert.equal(result.businessDecision,null);
+  assert.equal(result.workflowStatus,null);
+  assert.equal(evidence.invoice.fields.status,'Draft');
+});
+test('merchant-specific order states are preserved verbatim, never replaced by checkpoint statuses',()=>{
+  const e=exampleEvidence();
+  e.order.fields.productionStage='Awaiting engraving';
+  e.productionAsset.fields.personalizationText='SOPHIA';
+  const before=structuredClone(e);
+  const r=assessment(e);
+  assert.deepEqual(e,before);
+  assert.equal(e.order.fields.productionStage,'Awaiting engraving');
+  assert.equal(r.workflowStatus,null);
+  assert.equal(r.actionExecuted,false);
+});
