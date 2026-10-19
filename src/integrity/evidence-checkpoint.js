@@ -56,10 +56,11 @@ function readField(evidence, locator) {
     : {exists:false};
 }
 function reference(locator) { return locator.source + '.' + locator.field; }
-function attestationFor(evidence, rule) {
+function attestationFor(evidence, rule, trustedRefs) {
   const att = evidence?.[rule.source]?.attestation;
   return att && att.verifierId === rule.verifierId && nonempty(att.evidenceRef) &&
-    nonempty(att.actorRef) && nonempty(att.recordedAt);
+    nonempty(att.actorRef) && nonempty(att.recordedAt) &&
+    trustedRefs.has(rule.source+'.attestation:'+att.evidenceRef);
 }
 /**
  * @param {{policy:object, evidence:object, proposedAction:{type:string,subjectRef:string}}} input
@@ -68,10 +69,12 @@ function attestationFor(evidence, rule) {
  *
  * 'consistent' is a comparison observation, never production authorization.
  * 'unverifiable' indicates missing or untrusted evidence, not a false statement.
- * For authenticated claims, the adapter must verify verifierId, actorRef and
- * evidenceRef server-side. JSON from an end-user is NOT an attestation.
+ * For authenticated claims, the adapter must validate verifierId, actorRef and
+ * evidenceRef server-side and pass trustedEvidenceRefs as a separate, trusted
+ * argument. Raw user JSON, even with matching verifierId, cannot attest itself.
+ * This function is advisory even if every comparison agrees.
  */
-export function evaluateEvidenceCheckpoint({ policy, evidence = {}, proposedAction } = {}) {
+export function evaluateEvidenceCheckpoint({ policy, evidence = {}, proposedAction, trustedEvidenceRefs = [] } = {}) {
   validatePolicy(policy);
   if (!proposedAction || !nonempty(proposedAction.type) || !nonempty(proposedAction.subjectRef)) {
     throw new TypeError('proposed_action_context_required');
@@ -79,6 +82,11 @@ export function evaluateEvidenceCheckpoint({ policy, evidence = {}, proposedActi
   if (!evidence || typeof evidence !== 'object' || Array.isArray(evidence)) {
     throw new TypeError('evidence_must_be_named_records');
   }
+  if (!Array.isArray(trustedEvidenceRefs) || !trustedEvidenceRefs.every(nonempty)) {
+    throw new TypeError('trusted_evidence_refs_must_be_list');
+  }
+  // The authenticated server/adapter, not an end-user, must supply these refs.
+  const trustedRefs = new Set(trustedEvidenceRefs);
   const findings = policy.rules.map(rule => {
     const base = {ruleId:rule.id, ruleType:rule.type};
     if (rule.type === 'required') {
@@ -102,7 +110,7 @@ export function evaluateEvidenceCheckpoint({ policy, evidence = {}, proposedActi
           'Supplied values differ. The evaluator cannot select an authoritative value.'};
     }
     if (rule.type === 'attestation') {
-      const verified=attestationFor(evidence,rule);
+      const verified=attestationFor(evidence,rule,trustedRefs);
       return {...base,observation:verified?'attestation_present':'unverifiable',
         references:[rule.source+'.attestation'],
         detail:verified?'Attestation metadata matches the configured verifier (adapter validation required).':
@@ -111,7 +119,8 @@ export function evaluateEvidenceCheckpoint({ policy, evidence = {}, proposedActi
     const claims=evidence[rule.source]?.verifiedAspects;
     const missing=rule.aspects.filter(aspect => {
       const claim=claims?.[aspect];
-      return !claim || claim.verifierId !== rule.verifierId || !nonempty(claim.evidenceRef);
+      return !claim || claim.verifierId !== rule.verifierId || !nonempty(claim.evidenceRef) ||
+        !trustedRefs.has(rule.source+'.verifiedAspects.'+aspect+':'+claim.evidenceRef);
     });
     return {...base,observation:missing.length?'unverifiable':'coverage_declared',
       references:rule.aspects.map(x=>rule.source+'.verifiedAspects.'+x),
