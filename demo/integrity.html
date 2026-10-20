@@ -251,7 +251,7 @@ async function demoProvider(action){
   const endpoint=action==='reconcile'?'reconcile':'run';
   const payload=action==='reconcile'
     ?{outboxId:$('simulator-controls').dataset.outbox}
-    :{mode:action==='lost'?'lost_ack':'success'};
+    :{mode:action==='lost'?'lost_ack':'success',outboxId:$('simulator-controls').dataset.outbox};
   const result=await api('/api/integrity/sandbox/crm/'+endpoint,{
    method:'POST',body:JSON.stringify(payload)
   });
