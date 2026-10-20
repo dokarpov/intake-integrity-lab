@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'service/**'
+      - 'infra/postgres/**'
       - 'src/**'
       - 'tests/**'
       - 'scripts/**'
@@ -16,6 +17,7 @@ on:
   pull_request:
     paths:
       - 'service/**'
+      - 'infra/postgres/**'
       - 'src/**'
       - 'tests/**'
       - 'scripts/**'
