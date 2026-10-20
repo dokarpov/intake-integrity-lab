@@ -23,13 +23,10 @@ try{
    await page.waitForFunction(() => document.querySelector('#response-json')?.textContent?.includes('candidateCount'),null,{timeout:12000});
    const resp=JSON.parse(await page.locator('#response-json').innerText());
    if(resp.candidateCount!==2||resp.replayed!==false)throw new Error('Expected two candidates, got '+JSON.stringify(resp));
-   await page.locator('#details').waitFor();
-   const contextText=await page.locator('#candidates').innerText();
-   if(!contextText.includes('Studio North')||!contextText.includes('Studio South'))
-     throw new Error('Two person histories not returned from PostgreSQL: '+contextText);
-   const audit=await page.locator('#audit-list').innerText();
-   if(!audit.includes('intake.received')||!audit.includes('identity.candidates_evaluated'))
-     throw new Error('Missing persisted audit events');
+   await page.locator('#candidates').getByText('Sam Lee · Studio North').waitFor({timeout:12000});
+   await page.locator('#candidates').getByText('Sam Lee · Studio South').waitFor({timeout:12000});
+   await page.locator('#audit-list').getByText(/intake\.received/).waitFor({timeout:12000});
+   await page.locator('#audit-list').getByText(/identity\.candidates_evaluated/).waitFor({timeout:12000});
    await page.reload();
    await page.getByText('Connected to API').waitFor({timeout:12000});
    await page.locator('#record-list .line-button').filter({hasText:'Sam Lee'}).first().click();
