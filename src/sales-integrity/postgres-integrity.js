@@ -342,7 +342,7 @@ export class PostgresSalesIntegrity {
       return {tenantId,intakeId,relationId,fromPersonId,toPersonId,relationType};
     });
   }
-  async claimDeliveries({tenantId,destination,workerId,limit=10,leaseSeconds=120}){
+  async claimDeliveries({tenantId,destination,workerId,limit=10,leaseSeconds=120,outboxId=null}){
     required(tenantId,'tenant_id');required(destination,'destination');required(workerId,'worker_id');
     if(!Number.isInteger(limit)||limit<1||limit>100)throw new Error('invalid_claim_limit');
     if(!Number.isInteger(leaseSeconds)||leaseSeconds<30||leaseSeconds>900)
@@ -351,9 +351,10 @@ export class PostgresSalesIntegrity {
       const q=await c.query(`SELECT * FROM sales_crm_outbox_v2
         WHERE tenant_id=$1 AND destination=$2 AND state IN ('pending','retry')
           AND next_attempt_at<=clock_timestamp()
+          AND ($4::uuid IS NULL OR outbox_id=$4)
         ORDER BY next_attempt_at,created_at
         LIMIT $3 FOR UPDATE SKIP LOCKED`,
-        [tenantId,destination,limit]);
+        [tenantId,destination,limit,outboxId]);
       const result=[];
       for(const row of q.rows){
         const leaseToken=uuid();
