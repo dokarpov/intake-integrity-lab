@@ -32,6 +32,7 @@ export class SandboxCrmSimulator {
  }
  async runOnce({mode='success',limit=10,outboxId=null}={}){
   if(!['success','lost_ack'].includes(mode))throw new Error('sandbox_mode_invalid');
+  if(typeof outboxId!=='string'||!outboxId)throw new Error('outbox_id_required');
   const claims=await this.integrity.claimDeliveries({
     tenantId:this.tenantId,destination:'crm-simulator',
     workerId:'sandbox-provider',limit,outboxId
