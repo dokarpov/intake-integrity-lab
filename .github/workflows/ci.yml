@@ -49,7 +49,7 @@ jobs:
         with:
           node-version: '22'
       - run: npm install --ignore-scripts
-      - run: node --test tests/sales-integrity-api.test.js
+      - run: node --test tests/sales-integrity-api.test.js tests/sales-integrity-worker.test.js
 
   postgres:
     runs-on: ubuntu-latest
