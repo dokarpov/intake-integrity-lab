@@ -235,7 +235,7 @@ export class PostgresSalesIntegrity {
   async decideEnquiry({tenantId,intakeId,requestKey,action,personId=null,actorId,reason,
     identityEvidenceRef,consentEvidenceRef=null,policyVersion='identity-check-v1',destination='crm'}){
     for(const [k,v] of Object.entries({tenantId,intakeId,requestKey,actorId,reason,identityEvidenceRef,policyVersion}))
-      required(v,k,k==='reason'?4000:240);
+      required(v,k,k==='reason'?4000:(k==='identityEvidenceRef'?1600:240));
     if(reason.trim().length<8)throw new Error('reason_too_short');
     if(!['link_existing','create_new','discard'].includes(action))throw new Error('invalid_decision_action');
     if(action==='link_existing')required(personId,'selected_candidate');
