@@ -130,7 +130,7 @@ async function api(path,opts={}){
 function notify(err){text('connection',err.message||String(err));$('connection').className='err'}
 async function initialize(){
  try{
-  const [health,me]=await Promise.all([api('/healthz'),api('/api/me')]);
+  const [health,me]=await Promise.all([api('/readyz'),api('/api/me')]);
   state.connected=Boolean(health.ok);
   text('connection','Connected to API');
   $('connection').className='ok';
