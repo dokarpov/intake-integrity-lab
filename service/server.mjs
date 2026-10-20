@@ -13,6 +13,7 @@ import { createApiHandler } from '../src/service/app.js';
 import { PostgresSalesIntegrity } from '../src/sales-integrity/postgres-integrity.js';
 import { SandboxDecisionEvidence } from '../src/sales-integrity/sandbox-evidence.js';
 import { SandboxCrmSimulator } from '../src/sales-integrity/sandbox-crm.js';
+import { PostgresSourceComparison } from '../src/sales-integrity/source-comparison.js';
 import { HttpIdentityResolver } from '../src/integrations/identity/http-resolver.js';
 
 const here=dirname(fileURLToPath(import.meta.url)), root=resolve(here,'..');
@@ -52,6 +53,7 @@ const integrityEnabled=process.env.INTEGRITY_PG_V2_ENABLED==='true';
 if(integrityEnabled&&(!pool||!process.env.INTEGRITY_FINGERPRINT_HMAC_SECRET)){
   throw new Error('INTEGRITY_PG_V2_REQUIRES_DATABASE_AND_HMAC_SECRET');
 }
+const sourceComparisonStore=integrityEnabled?new PostgresSourceComparison({pool}):null;
 const integrityStore=integrityEnabled?new PostgresSalesIntegrity({
   pool,fingerprintSecret:process.env.INTEGRITY_FINGERPRINT_HMAC_SECRET
 }):null;
@@ -64,10 +66,11 @@ const sandboxCrmSimulator=sandboxEnabled?new SandboxCrmSimulator({pool,integrity
 const api=createApiHandler({
   authenticator,runtimes,policies,rateLimiter:limiter,intakeConfig:config.intake||{},
   oneCConfig,identityResolver,integrityStore,
-  integrityEvidenceVerifier:sandboxEvidenceProvider,sandboxEvidenceProvider,sandboxCrmSimulator
+  integrityEvidenceVerifier:sandboxEvidenceProvider,sandboxEvidenceProvider,sandboxCrmSimulator,sourceComparisonStore
 });
 const consoleHtml=readFileSync(resolve(root,'demo/index.html'),'utf8');
 const integrityTestHtml=integrityEnabled?readFileSync(resolve(root,'demo/integrity.html'),'utf8'):null;
+const sourceTestHtml=integrityEnabled?readFileSync(resolve(root,'demo/source-comparison.html'),'utf8'):null;
 const server=createServer(async(req,res)=>{
   if(req.method==='GET'&&(req.url==='/'||req.url==='/console')){res.writeHead(200,{'content-type':'text/html; charset=utf-8','cache-control':'no-store','content-security-policy':"default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",'x-frame-options':'DENY','x-content-type-options':'nosniff','referrer-policy':'no-referrer'});return res.end(consoleHtml)}
   if(req.method==='GET'&&req.url==='/integrity'&&integrityTestHtml){
@@ -75,6 +78,12 @@ const server=createServer(async(req,res)=>{
       'content-security-policy':"default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
       'x-frame-options':'DENY','x-content-type-options':'nosniff','referrer-policy':'no-referrer'});
     return res.end(integrityTestHtml);
+  }
+  if(req.method==='GET'&&req.url==='/sources'&&sourceTestHtml){
+    res.writeHead(200,{'content-type':'text/html; charset=utf-8','cache-control':'no-store',
+     'content-security-policy':"default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+     'x-frame-options':'DENY','x-content-type-options':'nosniff'});
+    return res.end(sourceTestHtml);
   }
   return api(req,res);
 });
