@@ -57,7 +57,7 @@ p{margin:10px 0 0}.intro p{max-width:660px;font-size:15px;color:#545454;line-hei
 <p>This is a guided backend test, not a second sales inbox. Submit an enquiry, inspect possible customer matches, and check what the database actually recorded. No automatic identity merge or CRM delivery decision.</p>
 </section>
 <div class="auth-bar"><strong id="connection">Checking service connection…</strong><span id="account">Not signed in</span><button class="secondary" id="auth-toggle" type="button">Authentication</button></div>
-<section class="auth-panel" id="auth-panel" hidden><div class="field"><label for="access-token">OIDC access token (temporary testing input)</label><input id="access-token" type="password" autocomplete="off" placeholder="Bearer token for your test account"></div>
+<section class="auth-panel" id="auth-panel" hidden><div class="field"><label for="access-token">Staging or OIDC access token</label><input id="access-token" type="password" autocomplete="off" placeholder="Token provided for the isolated testing environment"></div>
 <button class="secondary" id="connect" type="button">Connect account</button>
 <p class="hint">Localhost uses the developer test account. Hosted access will require an approved identity provider; this screen does not bypass authentication.</p></section>
 <div class="layout">
@@ -114,7 +114,7 @@ p{margin:10px 0 0}.intro p{max-width:660px;font-size:15px;color:#545454;line-hei
 'use strict';
 const $=id=>document.getElementById(id);
 const local=['localhost','127.0.0.1'].includes(location.hostname);
-const state={token:'',selected:null,connected:false,candidates:[],decisionKey:null};
+const state={token:sessionStorage.getItem('intake-staging-access')||'',selected:null,connected:false,candidates:[],decisionKey:null};
 const text=(id,value)=>{$(id).textContent=String(value??'')};
 const make=(tag,content,cls='')=>{const n=document.createElement(tag);n.textContent=String(content??'');if(cls)n.className=cls;return n};
 function row(k,v){const d=make('div','','text-row');d.append(make('b',k),make('span',v));return d}
@@ -286,7 +286,7 @@ $('intake-form').addEventListener('submit',async e=>{
 $('inspect-submitted').addEventListener('click',()=>state.selected&&inspect(state.selected));
 $('reload-list').addEventListener('click',refresh);
 $('auth-toggle').addEventListener('click',()=>{$('auth-panel').hidden=!$('auth-panel').hidden});
-$('connect').addEventListener('click',()=>{state.token=$('access-token').value.trim();$('access-token').value='';initialize()});
+$('connect').addEventListener('click',()=>{state.token=$('access-token').value.trim();sessionStorage.setItem('intake-staging-access',state.token);$('access-token').value='';initialize()});
 $('source-key').value='web-'+crypto.randomUUID();
 initialize();
 </script></body></html>
