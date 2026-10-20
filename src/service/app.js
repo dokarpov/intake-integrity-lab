@@ -36,6 +36,37 @@ export function createApiHandler({authenticator,runtimes,policies,rateLimiter,in
           const record=await integrityStore.receiveEnquiry({...body,tenantId:principal.tenantId,actorId:principal.id});
           return sendJson(res,record.replayed?200:201,record,{requestId});
         }
+        if(req.method==='GET'&&url.pathname==='/api/integrity/intakes'){
+          requirePermission(principal,'review.read');
+          const items=await integrityStore.listIntakes({
+            tenantId:principal.tenantId,limit:parseLimit(url.searchParams.get('limit'),50,100)
+          });
+          return sendJson(res,200,{items},{requestId});
+        }
+        if(req.method==='GET'&&url.pathname==='/api/integrity/people'){
+          requirePermission(principal,'review.read');
+          const items=await integrityStore.listPeople({
+            tenantId:principal.tenantId,limit:parseLimit(url.searchParams.get('limit'),100,100)
+          });
+          return sendJson(res,200,{items},{requestId});
+        }
+        let detailMatch=pathMatch(url.pathname,'/api/integrity/intakes/:id');
+        if(req.method==='GET'&&detailMatch){
+          requirePermission(principal,'review.read');
+          const record=await integrityStore.getIntake({
+            tenantId:principal.tenantId,intakeId:detailMatch.id
+          });
+          if(!record)throw Object.assign(new Error('intake_not_found'),{statusCode:404});
+          return sendJson(res,200,record,{requestId});
+        }
+        detailMatch=pathMatch(url.pathname,'/api/integrity/intakes/:id/deliveries');
+        if(req.method==='GET'&&detailMatch){
+          requirePermission(principal,'integration.read');
+          const items=await integrityStore.outboxForIntake({
+            tenantId:principal.tenantId,intakeId:detailMatch.id
+          });
+          return sendJson(res,200,{items},{requestId});
+        }
         let match=pathMatch(url.pathname,'/api/integrity/intakes/:id/candidates');
         if(req.method==='GET'&&match){
           requirePermission(principal,'review.read');
