@@ -33,11 +33,24 @@ Every new association uses composite tenant foreign keys. The same phone/email f
 
 ## Source and authorization boundaries
 
-The reference class \`PostgresSalesIntegrity\` is deliberately **not** enabled in the existing service API or the production worker. Its \`actorId\`, \`consentEvidenceRef\`, \`identityEvidenceRef\` and \`sourceRef\` must come from independently authenticated adapters and access-control checks. A user-provided string alone cannot establish actual identity or lawful permission. Neither an identity evidence reference nor a consent reference is validated cryptographically by this class.
+The reference class \`PostgresSalesIntegrity\` is wired into the authenticated service only with `INTEGRITY_PG_V2_ENABLED=true` (disabled by default); it is not enabled in the production worker. Its \`actorId\`, \`consentEvidenceRef\`, \`identityEvidenceRef\` and \`sourceRef\` must come from independently authenticated adapters and access-control checks. A user-provided string alone cannot establish actual identity or lawful permission. Neither an identity evidence reference nor a consent reference is validated cryptographically by this class.
 
 The HMAC secret MUST be deployment-specific and at least 32 random characters; hash rotation requires a fingerprint migration strategy. Context is stored in the DB as JSON and can contain personal data; do not use real customer payloads in testing. Deploy with encryption at rest, backups, row access permissions/tenant RLS or dedicated tenant roles, retention and erasure procedures. Never store an access token or CRM credential in the outbox. Role restrictions are documented at the migration; schema-owner/superuser roles must not be used by the app.
 
 The transactional audit chain detects accidental or unprivileged tampering and is **not** an external WORM archive. Existing compliance-ledger sealing remains separate; do not claim these two ledgers are atomically the same transaction. For cross-system export use a separate idempotent projector.
+
+## Optional authenticated API and CRM delivery boundary
+
+In an isolated test environment, apply migration 003 and set \`DATABASE_URL\`, \`INTEGRITY_PG_V2_ENABLED=true\`, and a deployment-specific \`INTEGRITY_FINGERPRINT_HMAC_SECRET\`. The existing API continues to operate unchanged.
+
+- POST \`/api/integrity/intakes\` requires \`intake.submit\`.
+- GET \`/api/integrity/intakes/:id/candidates\` requires \`review.read\`.
+- GET \`/api/integrity/intakes/:id/history\` requires \`audit.read\`.
+- POST \`/api/integrity/intakes/:id/decisions\` requires \`review.resolve\`.
+
+Tenant and actor identity are derived from authenticated server claims, never the caller's JSON. **The decision endpoint returns 503 until a trusted \`integrityEvidenceVerifier.verifyDecision\` is configured.** The default server bootstrap deliberately does not fabricate an independent evidence verifier.
+
+\`IntegrityCrmHandoffWorker\` provides an opt-in sender contract and consumes the PostgreSQL outbox. A real CRM adapter must be supplied separately, with authenticated provider receipts and actual idempotency/lookup support. An HTTP 500 or timeout is NOT proof a write didn't happen. The new backend also exposes \`relationshipsFor\` and \`deliveryHistory\` for authorized internal callers. No real 1C/CRM delivery is included in this testing build.
 
 ## How to run
 
