@@ -213,3 +213,37 @@ test('CRM audit events remain sequential and tenant isolated after unknown deliv
  assert.deepEqual(events.map(x=>x.sequence),[1,2,3]);
  assert.deepEqual(await service.deliveryHistory({tenantId:tenant(),outboxId:d.delivery.outbox_id}),[]);
 });
+
+test('persistent staging read model reflects intake, decision, and delivery across reloads',{skip:!enabled},async()=>{
+ const t=tenant(),another=tenant();
+ const p=await person(t,'Known customer');
+ const original=await service.receiveEnquiry(enquiry(t,'read-model-1'));
+ const created=await service.receiveEnquiry(enquiry(t,'read-model-2',{
+   displayName:'New visitor',identifier:{kind:'email',value:'new.person@example.com'}
+ }));
+ const list=await service.listIntakes({tenantId:t});
+ assert.equal(list.length,2);
+ assert.equal(list.find(x=>x.intakeId===original.intakeId).candidateCount,1);
+ assert.equal(list.find(x=>x.intakeId===created.intakeId).state,'received');
+ assert.deepEqual(await service.listIntakes({tenantId:another}),[]);
+ assert.deepEqual(await service.listPeople({tenantId:another}),[]);
+ assert.equal((await service.listPeople({tenantId:t})).some(x=>x.personId===p.personId),true);
+ const detail=await service.getIntake({tenantId:t,intakeId:original.intakeId});
+ assert.equal(detail.name,'Sam Lee');
+ assert.equal(detail.context.message,'Original customer message');
+ assert.equal(detail.decision,null);
+ assert.equal(await service.getIntake({tenantId:another,intakeId:original.intakeId}),null);
+ const action=await service.decideEnquiry(decision(t,original.intakeId,'link_existing',
+   {personId:p.personId}));
+ const persisted=await service.getIntake({tenantId:t,intakeId:original.intakeId});
+ assert.equal(persisted.state,'resolved');
+ assert.equal(persisted.decision.action,'link_existing');
+ assert.equal(persisted.decision.personId,p.personId);
+ assert.equal((await service.listIntakes({tenantId:t}))
+   .find(x=>x.intakeId===original.intakeId).deliveryState,'pending');
+ const deliveries=await service.outboxForIntake({tenantId:t,intakeId:original.intakeId});
+ assert.equal(deliveries.length,1);
+ assert.equal(deliveries[0].state,'pending');
+ assert.equal(action.replayed,false);
+ await assert.rejects(()=>service.listIntakes({tenantId:t,limit:0}),/invalid_list_limit/);
+});
