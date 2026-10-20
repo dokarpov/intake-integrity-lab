@@ -13,7 +13,7 @@ function subjectRefString(ref){return typeof ref==='string'?ref:ref?.ref}
 function operationAudit(policy,principal,subjectRef,extra={}){return{actor:actor(principal),subjectRef,...policy,policyRefs:policy.policyRefs||[],...extra}}
 function httpStatusFor(error){if(error.statusCode)return error.statusCode;if(/idempotency_key_payload_conflict|enquiry_already_decided|delivery_lease_conflict/.test(String(error.message||'')))return 409;const m=String(error.message||'');if(/required|invalid|not_allowed|fields_|missing|unsupported|transition|conflict|already|not_proposed|not_approved/.test(m))return 400;if(/not_found/.test(m))return 404;if(/forbidden|denied/.test(m))return 403;if(/claim/.test(m)&&/conflict|another/.test(m))return 409;return 500}
 
-export function createApiHandler({authenticator,runtimes,policies,rateLimiter,intakeConfig={},oneCConfig=null,identityResolver=null,fetchFn=globalThis.fetch,controlStatusProvider=null,integrityStore=null,integrityEvidenceVerifier=null}={}){
+export function createApiHandler({authenticator,runtimes,policies,rateLimiter,intakeConfig={},oneCConfig=null,identityResolver=null,fetchFn=globalThis.fetch,controlStatusProvider=null,integrityStore=null,integrityEvidenceVerifier=null,sandboxEvidenceProvider=null}={}){
   if(!authenticator||!runtimes||!policies)throw new Error('service_dependencies_required');
   return async function handler(req,res){
     const requestId=correlationId(req);res.setHeader('x-request-id',requestId);res.setHeader('referrer-policy','no-referrer');res.setHeader('permissions-policy','camera=(), microphone=(), geolocation=()');
@@ -30,6 +30,15 @@ export function createApiHandler({authenticator,runtimes,policies,rateLimiter,in
       // Authenticated tenant/actor always override browser-provided fields.
       if(url.pathname.startsWith('/api/integrity/')){
         if(!integrityStore)throw Object.assign(new Error('integrity_v2_disabled'),{statusCode:404});
+        if(req.method==='POST'&&url.pathname==='/api/integrity/sandbox/evidence'){
+          requirePermission(principal,'review.resolve');
+          if(!sandboxEvidenceProvider)throw Object.assign(new Error('sandbox_disabled'),{statusCode:404});
+          const body=await readJson(req);
+          const result=await sandboxEvidenceProvider.issue({
+            ...body,tenantId:principal.tenantId,actorId:principal.id
+          });
+          return sendJson(res,200,result,{requestId});
+        }
         if(req.method==='POST'&&url.pathname==='/api/integrity/intakes'){
           requirePermission(principal,'intake.submit');
           const body=await readJson(req);
