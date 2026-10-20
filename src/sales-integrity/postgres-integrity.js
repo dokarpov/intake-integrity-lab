@@ -387,6 +387,25 @@ export class PostgresSalesIntegrity {
     });
     return {events,integrityOk};
   }
+  async relationshipsFor({tenantId,personId}){
+    required(tenantId,'tenant_id');required(personId,'person_id');
+    const q=await this.pool.query(`SELECT relation_id,from_person_id,to_person_id,relation_type,
+      intake_id,asserted_by,evidence_ref,created_at
+      FROM sales_person_relationships
+      WHERE tenant_id=$1 AND (from_person_id=$2 OR to_person_id=$2)
+      ORDER BY created_at DESC,relation_id`,[tenantId,personId]);
+    return q.rows.map(r=>({relationId:r.relation_id,fromPersonId:r.from_person_id,
+      toPersonId:r.to_person_id,relationType:r.relation_type,intakeId:r.intake_id,
+      assertedBy:r.asserted_by,evidenceRef:r.evidence_ref,createdAt:r.created_at}));
+  }
+  async deliveryHistory({tenantId,outboxId}){
+    required(tenantId,'tenant_id');required(outboxId,'outbox_id');
+    const q=await this.pool.query(`SELECT sequence,action,actor_id,details_json,created_at
+      FROM sales_crm_outbox_events
+      WHERE tenant_id=$1 AND outbox_id=$2 ORDER BY sequence`,[tenantId,outboxId]);
+    return q.rows.map(r=>({sequence:Number(r.sequence),action:r.action,
+      actorId:r.actor_id,details:r.details_json,createdAt:r.created_at}));
+  }
   async outboxForIntake({tenantId,intakeId}){
     required(tenantId,'tenant_id');required(intakeId,'intake_id');
     const q=await this.pool.query(`SELECT outbox_id,destination,operation_key,state,attempts,
