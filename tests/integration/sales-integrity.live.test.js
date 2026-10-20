@@ -190,3 +190,26 @@ test('unverified identity reference cannot authorize a write',{skip:!enabled},as
   {personId:p.personId,identityEvidenceRef:''})),/identityEvidenceRef_required_or_invalid/);
  assert.deepEqual(await service.outboxForIntake({tenantId:t,intakeId:r.intakeId}),[]);
 });
+
+test('relationship read returns evidence-backed links in either direction, never another tenant',{skip:!enabled},async()=>{
+ const t=tenant(),a=await person(t,'Owner'),b=await person(t,'Colleague'),r=await service.receiveEnquiry(enquiry(t,'read-rel'));
+ await service.decideEnquiry(decision(t,r.intakeId,'link_existing',{personId:a.personId}));
+ await service.relatePeople({tenantId:t,intakeId:r.intakeId,fromPersonId:a.personId,
+  toPersonId:b.personId,relationType:'colleague',actorId:'reviewer',evidenceRef:'verified-relationship'});
+ const forward=await service.relationshipsFor({tenantId:t,personId:a.personId});
+ const reverse=await service.relationshipsFor({tenantId:t,personId:b.personId});
+ assert.equal(forward.length,1);assert.equal(reverse.length,1);
+ assert.equal(forward[0].relationId,reverse[0].relationId);
+ assert.equal(forward[0].evidenceRef,'verified-relationship');
+ assert.deepEqual(await service.relationshipsFor({tenantId:tenant(),personId:a.personId}),[]);
+});
+test('CRM audit events remain sequential and tenant isolated after unknown delivery',{skip:!enabled},async()=>{
+ const t=tenant(),{d}=await createForDelivery(t,'delivery-trace');
+ const [claim]=await service.claimDeliveries({tenantId:t,destination:'crm',workerId:'sender'});
+ await service.settleDelivery({tenantId:t,outboxId:claim.outboxId,leaseToken:claim.leaseToken,
+  actorId:'sender',outcome:'uncertain',reason:'timeout_after_write'});
+ const events=await service.deliveryHistory({tenantId:t,outboxId:d.delivery.outbox_id});
+ assert.deepEqual(events.map(x=>x.action),['delivery.enqueued','delivery.claimed','delivery.uncertain']);
+ assert.deepEqual(events.map(x=>x.sequence),[1,2,3]);
+ assert.deepEqual(await service.deliveryHistory({tenantId:tenant(),outboxId:d.delivery.outbox_id}),[]);
+});
