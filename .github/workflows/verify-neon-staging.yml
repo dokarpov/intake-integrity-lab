@@ -1,0 +1,25 @@
+name: verify-neon-staging-public
+on:
+  push:
+    branches: [testing/postgres-integrity-2026-10-20]
+    paths: ['.github/workflows/verify-neon-staging.yml']
+  workflow_dispatch:
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check deployed staging HTTP and PostgreSQL readiness
+        env:
+          URL: https://br-shiny-union-bajmnaa3-intakestaging.compute.c-8.eu-central-1.aws.neon.tech
+        run: |
+          curl --fail-with-body --retry 3 --retry-delay 3 --connect-timeout 20 -sS "$URL/healthz" | tee /tmp/health.json
+          curl --fail-with-body --retry 3 --retry-delay 3 --connect-timeout 20 -sS "$URL/readyz" | tee /tmp/ready.json
+          curl --fail-with-body --retry 3 --retry-delay 3 --connect-timeout 20 -sS "$URL/" | grep -q 'Follow one enquiry from receipt'
+          python3 - <<'PY'
+          import json
+          a=json.load(open('/tmp/health.json'))
+          b=json.load(open('/tmp/ready.json'))
+          assert a.get('ok') is True and a.get('mode')=='synthetic',a
+          assert b.get('ok') is True and b.get('database')=='postgres',b
+          print('Neon staging HTTP, page, and real database readiness PASS')
+          PY
