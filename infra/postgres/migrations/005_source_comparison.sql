@@ -58,11 +58,15 @@ CREATE TABLE IF NOT EXISTS sales_source_assessments (
 -- Deny DELETE/UPDATE on these tables for app role in production; service currently staging only.
 CREATE OR REPLACE FUNCTION sales_snapshot_reject_change() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN RAISE EXCEPTION 'source evidence is append-only'; END $$;
+DROP TRIGGER IF EXISTS sales_source_snapshots_immutable ON sales_source_snapshots;
 CREATE TRIGGER sales_source_snapshots_immutable BEFORE UPDATE OR DELETE ON sales_source_snapshots
  FOR EACH ROW EXECUTE FUNCTION sales_snapshot_reject_change();
+DROP TRIGGER IF EXISTS sales_source_records_immutable ON sales_source_records;
 CREATE TRIGGER sales_source_records_immutable BEFORE UPDATE OR DELETE ON sales_source_records
  FOR EACH ROW EXECUTE FUNCTION sales_snapshot_reject_change();
+DROP TRIGGER IF EXISTS sales_source_comparisons_immutable ON sales_source_comparisons;
 CREATE TRIGGER sales_source_comparisons_immutable BEFORE UPDATE OR DELETE ON sales_source_comparisons
  FOR EACH ROW EXECUTE FUNCTION sales_snapshot_reject_change();
+DROP TRIGGER IF EXISTS sales_source_assessments_immutable ON sales_source_assessments;
 CREATE TRIGGER sales_source_assessments_immutable BEFORE UPDATE OR DELETE ON sales_source_assessments
  FOR EACH ROW EXECUTE FUNCTION sales_snapshot_reject_change();
