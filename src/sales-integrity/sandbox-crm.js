@@ -30,11 +30,11 @@ export class SandboxCrmSimulator {
     throw new Error('sandbox_operation_reuse_with_conflicting_payload');
   return old.rows[0];
  }
- async runOnce({mode='success',limit=10}={}){
+ async runOnce({mode='success',limit=10,outboxId=null}={}){
   if(!['success','lost_ack'].includes(mode))throw new Error('sandbox_mode_invalid');
   const claims=await this.integrity.claimDeliveries({
     tenantId:this.tenantId,destination:'crm-simulator',
-    workerId:'sandbox-provider',limit
+    workerId:'sandbox-provider',limit,outboxId
   });
   const results=[];
   for(const claim of claims){
