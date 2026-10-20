@@ -1,0 +1,191 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#ffffff"><title>Intake Integrity | Database Test</title>
+<style>
+:root{font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;color:#202020;background:#fff;line-height:1.5}
+*,*::before,*::after{box-sizing:border-box}body{margin:0;background:#fff;min-width:320px}
+button,input,textarea,select{font:inherit}button{cursor:pointer}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid #202020;outline-offset:3px}
+.wrap{max-width:1170px;padding:0 28px;margin:auto}
+header{border-bottom:1px solid #e5e5e5;min-height:72px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.brand{font-size:18px;font-weight:800;letter-spacing:-.055em}header small{color:#666;font-size:12px}
+.intro{padding:47px 0 30px;max-width:760px}.eyebrow{font-size:11px;letter-spacing:.07em;font-weight:700;color:#777;text-transform:uppercase}
+h1,h2,h3{margin:0;letter-spacing:-.045em;line-height:1.13}
+h1{font-size:clamp(35px,5vw,61px);margin:13px 0 16px}h2{font-size:24px}h3{font-size:18px}
+p{margin:10px 0 0}.intro p{max-width:660px;font-size:15px;color:#545454;line-height:1.7}
+.layout{display:grid;grid-template-columns:minmax(0,.94fr) minmax(0,1.06fr);gap:20px;align-items:start;padding-bottom:60px}
+.card{border:1px solid #dadada;background:#fff;border-radius:9px;padding:25px;min-width:0}
+.card-title{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:21px}
+.pill{border:1px solid #d8d8d8;border-radius:99px;padding:4px 9px;font-size:11px;color:#444;white-space:nowrap}
+.field{margin-bottom:17px}.field label{display:block;margin-bottom:6px;font-weight:700;font-size:12px;color:#454545}
+.field input,.field textarea,.field select{border:1px solid #cbcbcb;background:#fff;border-radius:5px;padding:11px 12px;color:#202020;min-height:45px;width:100%;font-size:14px}
+.field textarea{min-height:83px;resize:vertical}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:13px}.grid > *{min-width:0}
+.action{background:#202020;color:#fff;font-weight:700;border:1px solid #202020;border-radius:6px;padding:11px 18px;min-height:45px;font-size:13px}
+.action:hover{background:#444}.action:disabled{background:#bbb;border-color:#bbb;cursor:wait}
+.secondary{background:#fff;color:#202020;border:1px solid #aaa;border-radius:6px;padding:9px 13px;font-size:12px;font-weight:700}
+.secondary:hover{background:#f7f7f7}
+.hint{color:#626262;font-size:12px;line-height:1.6}.result{border-top:1px solid #e7e7e7;margin-top:22px;padding-top:18px}
+.result[hidden],.details[hidden],.auth-panel[hidden]{display:none}
+.tiny{font-size:11px;color:#777;line-height:1.6;overflow-wrap:anywhere}
+.result pre{white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.65 ui-monospace,SFMono-Regular,monospace;color:#383838;margin:9px 0}
+.line{border-bottom:1px solid #eee;padding:12px 0}
+.line:last-child{border-bottom:0}
+.line-button{display:block;width:100%;text-align:left;background:#fff;border:0;padding:12px 0;border-bottom:1px solid #eee}
+.line-button:hover{background:#fafafa}
+.line-button strong{display:block;font-size:14px;overflow-wrap:anywhere}
+.line-button span{font-size:12px;color:#666;overflow-wrap:anywhere}
+.text-row{display:grid;grid-template-columns:112px 1fr;gap:10px;padding:8px 0;font-size:13px;overflow-wrap:anywhere}
+.text-row b{color:#656565;font-weight:500}
+.empty{font-size:13px;color:#666;margin-top:14px}
+.auth-bar{margin-bottom:24px;padding:15px 18px;border:1px solid #dfdfdf;border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:14px}
+.auth-bar strong{font-size:13px}.auth-bar span{color:#5a5a5a;font-size:12px}
+.auth-panel{padding:13px 17px;border:1px solid #e0e0e0;border-radius:8px;margin-bottom:20px}
+.auth-panel .field{margin-bottom:10px}
+.timeline{padding:0;margin:10px 0 0;list-style:none}
+.timeline li{padding:10px 0;border-bottom:1px solid #e8e8e8;font-size:12px;color:#454545;overflow-wrap:anywhere}
+.kv{margin-top:15px;padding-top:14px;border-top:1px solid #ddd}
+.err{color:#ad2b1a}.ok{color:#252525;font-weight:700}
+.foot{border-top:1px solid #e5e5e5;padding:22px 0 42px;color:#696969;font-size:12px;line-height:1.6}
+@media(max-width:860px){.layout{grid-template-columns:1fr}.intro{padding:38px 0 25px}}
+@media(max-width:580px){.wrap{padding:0 18px}header{min-height:62px}.intro h1{font-size:37px}.layout{gap:13px}.card{padding:19px}.grid{grid-template-columns:1fr;gap:0}.auth-bar{align-items:flex-start;flex-direction:column}.text-row{grid-template-columns:95px 1fr}}
+</style></head><body>
+<div class="wrap"><header><div class="brand">intake / integrity</div><small>Persistent PostgreSQL test</small></header>
+<main><section class="intro"><div class="eyebrow">Testing environment · authenticated database</div>
+<h1>Follow one enquiry from receipt to CRM handoff.</h1>
+<p>This is a guided backend test, not a second sales inbox. Submit an enquiry, inspect possible customer matches, and check what the database actually recorded. No automatic identity merge or CRM delivery decision.</p>
+</section>
+<div class="auth-bar"><strong id="connection">Checking service connection…</strong><span id="account">Not signed in</span><button class="secondary" id="auth-toggle" type="button">Authentication</button></div>
+<section class="auth-panel" id="auth-panel" hidden><div class="field"><label for="access-token">OIDC access token (temporary testing input)</label><input id="access-token" type="password" autocomplete="off" placeholder="Bearer token for your test account"></div>
+<button class="secondary" id="connect" type="button">Connect account</button>
+<p class="hint">Localhost uses the developer test account. Hosted access will require an approved identity provider; this screen does not bypass authentication.</p></section>
+<div class="layout">
+<section class="card"><div class="card-title"><h2>1. Submit an enquiry</h2><span class="pill">New intake</span></div>
+<form id="intake-form">
+<div class="grid">
+<div class="field"><label for="customer-name">Customer name</label><input id="customer-name" required maxlength="200" value="Sam Lee"></div>
+<div class="field"><label for="customer-email">Email</label><input id="customer-email" type="email" required maxlength="254" value="sam@example.com"></div>
+</div>
+<div class="grid">
+<div class="field"><label for="source-name">Source</label><select id="source-name"><option value="website">Website</option><option value="event">Event</option><option value="1c">1C import</option></select></div>
+<div class="field"><label for="source-key">Source event ID</label><input id="source-key" required maxlength="200"></div>
+</div>
+<div class="field"><label for="source-message">Original enquiry</label><textarea id="source-message" required maxlength="1500">Two colleagues contacted me about the same request. Who should I speak to?</textarea></div>
+<div class="field"><label for="consent">Consent / lawful-contact evidence reference</label><input id="consent" maxlength="180" placeholder="Leave empty if not independently available"></div>
+<button class="action" type="submit" id="submit-intake">Submit to PostgreSQL</button>
+<p class="hint">Use fictional customer details until real source authentication, retention and privacy controls are configured.</p>
+</form>
+<section id="submit-result" class="result" hidden><h3>Database response</h3><pre id="response-json"></pre>
+<button class="secondary" id="inspect-submitted" type="button">Inspect this enquiry</button></section>
+</section>
+<section class="card"><div class="card-title"><h2>2. Inspect persisted data</h2><button class="secondary" type="button" id="reload-list">Refresh</button></div>
+<p class="hint">Records come from the PostgreSQL backend, not localStorage or predefined browser scenarios.</p>
+<div id="record-list" class="empty">Connect to load enquiries.</div>
+<section class="details" id="details" hidden>
+<div class="kv"><h3 id="detail-title">Selected enquiry</h3><div id="detail-fields"></div></div>
+<div class="kv"><h3>Possible people</h3><div id="candidates"></div><p class="hint">Matching email is only a possible identity. No record is merged automatically.</p></div>
+<div class="kv"><h3>Decision history</h3><ul id="audit-list" class="timeline"></ul></div>
+<div class="kv"><h3>CRM delivery</h3><div id="delivery-state"></div>
+<p class="hint">Writes are queued only after a separately verified authorized decision. Uncertain outcomes require reconciliation.</p></div>
+</section>
+</section></div>
+</main><footer class="foot">Staging console. The product’s intended operating surface is the existing CRM or 1C—not another daily queue. Authenticated approval and live CRM delivery are separate release gates.</footer></div>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const local=['localhost','127.0.0.1'].includes(location.hostname);
+const state={token:'',selected:null,connected:false};
+const text=(id,value)=>{$(id).textContent=String(value??'')};
+const make=(tag,content,cls='')=>{const n=document.createElement(tag);n.textContent=String(content??'');if(cls)n.className=cls;return n};
+function row(k,v){const d=make('div','','text-row');d.append(make('b',k),make('span',v));return d}
+function authHeaders(){const h={'content-type':'application/json'};if(state.token)h.authorization='Bearer '+state.token;
+if(local)Object.assign(h,{'x-dev-user':'staging.operator','x-dev-tenant':'staging-demo','x-dev-roles':'sales,reviewer,auditor,integration_admin'});
+return h}
+async function api(path,opts={}){
+ const res=await fetch(path,{...opts,headers:{...authHeaders(),...(opts.headers||{})},cache:'no-store'});
+ const body=await res.json().catch(()=>({}));
+ if(!res.ok)throw new Error((body?.error?.message||body?.error?.code||'Request failed')+' (HTTP '+res.status+')');
+ return body
+}
+function notify(err){text('connection',err.message||String(err));$('connection').className='err'}
+async function initialize(){
+ try{
+  const [health,me]=await Promise.all([api('/healthz'),api('/api/me')]);
+  state.connected=Boolean(health.ok);
+  text('connection','Connected to API');
+  $('connection').className='ok';
+  text('account',me.name+' · '+me.tenantId);
+  await refresh();
+ }catch(e){state.connected=false;notify(e);text('account','Authentication required');$('auth-panel').hidden=false}
+}
+async function refresh(){
+ const root=$('record-list');root.replaceChildren();
+ try{
+  const data=await api('/api/integrity/intakes?limit=50');
+  if(!data.items.length){root.append(make('p','No enquiries in this tenant yet. Submit one to begin.','empty'));return}
+  for(const item of data.items){
+   const b=make('button','','line-button');b.type='button';
+   b.append(make('strong',item.name+' · '+item.state),make('span',item.source+' · '+item.candidateCount+' possible matches · '+new Date(item.createdAt).toLocaleString()));
+   b.addEventListener('click',()=>inspect(item.intakeId));root.append(b);
+  }
+ }catch(e){root.append(make('p',e.message,'err'))}
+}
+async function inspect(intakeId){
+ state.selected=intakeId;$('details').hidden=false;
+ text('detail-title','Loading enquiry…');
+ for(const id of ['detail-fields','candidates','audit-list','delivery-state'])$(id).replaceChildren();
+ try{
+  const id=encodeURIComponent(intakeId);
+  const detail=await api('/api/integrity/intakes/'+id);
+  text('detail-title',detail.name);
+  const f=$('detail-fields');
+  for(const [k,v] of Object.entries({
+    'State':detail.state,'Source':detail.source,
+    'Source event':detail.sourceEventKey,'Message':detail.context?.message||'No message',
+    'Consent reference':detail.consentReferencePresent?'Present':'Not supplied',
+    'Decision':detail.decision?.action||'Not yet authorized'
+  }))f.append(row(k,v));
+  const [candidates,history]=await Promise.all([
+   api('/api/integrity/intakes/'+id+'/candidates'),
+   api('/api/integrity/intakes/'+id+'/history')
+  ]);
+  const c=$('candidates');
+  if(!candidates.items.length)c.append(make('p','No existing identifier overlap. This is not proof the person is new.','empty'));
+  for(const p of candidates.items)c.append(row(p.name,'Candidate · '+p.personId.slice(0,8)));
+  const a=$('audit-list');
+  for(const x of history.events||[])a.append(make('li',x.action+' · '+x.actorId));
+  if(history.integrityOk===false)a.prepend(make('li','Audit integrity verification failed','err'));
+  try{
+   const deliveries=await api('/api/integrity/intakes/'+id+'/deliveries');
+   const q=$('delivery-state');
+   if(!deliveries.items.length)q.append(make('p','No CRM delivery authorized or queued.','empty'));
+   for(const item of deliveries.items)q.append(row(item.destination,item.state+' · '+item.attempts+' attempts'));
+  }catch(e){$('delivery-state').append(make('p',e.message,'err'))}
+ }catch(e){text('detail-title',e.message)}
+}
+$('intake-form').addEventListener('submit',async e=>{
+ e.preventDefault();const btn=$('submit-intake');btn.disabled=true;btn.textContent='Submitting…';
+ try{
+  const payload={
+   source:$('source-name').value,
+   sourceEventKey:$('source-key').value.trim(),
+   displayName:$('customer-name').value.trim(),
+   identifier:{kind:'email',value:$('customer-email').value.trim()},
+   context:{message:$('source-message').value.trim()},
+   consentEvidenceRef:$('consent').value.trim()||null
+  };
+  const response=await api('/api/integrity/intakes',{method:'POST',body:JSON.stringify(payload)});
+  $('submit-result').hidden=false;
+  text('response-json',JSON.stringify(response,null,2));
+  state.selected=response.intakeId;
+  await refresh();await inspect(response.intakeId);
+ }catch(err){$('submit-result').hidden=false;text('response-json',err.message)}
+ finally{btn.disabled=false;btn.textContent='Submit to PostgreSQL'}
+});
+$('inspect-submitted').addEventListener('click',()=>state.selected&&inspect(state.selected));
+$('reload-list').addEventListener('click',refresh);
+$('auth-toggle').addEventListener('click',()=>{$('auth-panel').hidden=!$('auth-panel').hidden});
+$('connect').addEventListener('click',()=>{state.token=$('access-token').value.trim();$('access-token').value='';initialize()});
+$('source-key').value='web-'+crypto.randomUUID();
+initialize();
+</script></body></html>
