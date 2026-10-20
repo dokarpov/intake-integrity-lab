@@ -67,10 +67,8 @@ export function compareSourceRows(onec,bitrix){
   for(const field of fields){
    const left=l[0][field],right=r[0][field];
    if(left===null||right===null){
-    if(left!==right){
-     issues.push(observation('field_not_comparable',sharedKey,l[0],r[0],field,left,right));
-     counts.missingFieldEvidence++;
-    }
+    issues.push(observation('field_not_comparable',sharedKey,l[0],r[0],field,left,right));
+    counts.missingFieldEvidence++;
    }else if(left!==right){
     issues.push(observation('field_difference',sharedKey,l[0],r[0],field,left,right));
     counts.fieldDifferences++;
