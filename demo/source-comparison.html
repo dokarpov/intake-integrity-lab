@@ -91,6 +91,7 @@ const normalize=s=>String(s||'').toLowerCase().replace(/[ _-]/g,'').trim();
 const make=(tag,text,cls='')=>{const el=document.createElement(tag);el.textContent=String(text??'');if(cls)el.className=cls;return el};
 async function api(path,options={}){
  const headers={'content-type':'application/json',...options.headers};
+ if(['localhost','127.0.0.1'].includes(location.hostname))Object.assign(headers,{'x-dev-user':'staging.operator','x-dev-tenant':'staging-demo','x-dev-roles':'sales,reviewer,auditor,integration_admin'});
  if(token)headers.authorization='Bearer '+token;
  const r=await fetch(path,{...options,headers,cache:'no-store'});
  const v=await r.json().catch(()=>({}));
