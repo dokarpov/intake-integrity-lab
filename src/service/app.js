@@ -13,7 +13,7 @@ function subjectRefString(ref){return typeof ref==='string'?ref:ref?.ref}
 function operationAudit(policy,principal,subjectRef,extra={}){return{actor:actor(principal),subjectRef,...policy,policyRefs:policy.policyRefs||[],...extra}}
 function httpStatusFor(error){if(error.statusCode)return error.statusCode;if(/idempotency_key_payload_conflict|enquiry_already_decided|delivery_lease_conflict/.test(String(error.message||'')))return 409;const m=String(error.message||'');if(/required|invalid|not_allowed|fields_|missing|unsupported|transition|conflict|already|not_proposed|not_approved/.test(m))return 400;if(/not_found/.test(m))return 404;if(/forbidden|denied/.test(m))return 403;if(/claim/.test(m)&&/conflict|another/.test(m))return 409;return 500}
 
-export function createApiHandler({authenticator,runtimes,policies,rateLimiter,intakeConfig={},oneCConfig=null,identityResolver=null,fetchFn=globalThis.fetch,controlStatusProvider=null,integrityStore=null,integrityEvidenceVerifier=null,sandboxEvidenceProvider=null,sandboxCrmSimulator=null}={}){
+export function createApiHandler({authenticator,runtimes,policies,rateLimiter,intakeConfig={},oneCConfig=null,identityResolver=null,fetchFn=globalThis.fetch,controlStatusProvider=null,integrityStore=null,integrityEvidenceVerifier=null,sandboxEvidenceProvider=null,sandboxCrmSimulator=null,sourceComparisonStore=null}={}){
   if(!authenticator||!runtimes||!policies)throw new Error('service_dependencies_required');
   return async function handler(req,res){
     const requestId=correlationId(req);res.setHeader('x-request-id',requestId);res.setHeader('referrer-policy','no-referrer');res.setHeader('permissions-policy','camera=(), microphone=(), geolocation=()');
@@ -62,6 +62,34 @@ export function createApiHandler({authenticator,runtimes,policies,rateLimiter,in
             ...body,tenantId:principal.tenantId,actorId:principal.id
           });
           return sendJson(res,200,result,{requestId});
+        }
+        if(sourceComparisonStore&&url.pathname.startsWith('/api/integrity/sources/')){
+          if(req.method==='GET'&&url.pathname==='/api/integrity/sources/latest'){
+            requirePermission(principal,'review.read');
+            return sendJson(res,200,await sourceComparisonStore.latest({tenantId:principal.tenantId}),{requestId});
+          }
+          if(req.method==='GET'&&url.pathname==='/api/integrity/sources/comparison/latest'){
+            requirePermission(principal,'review.read');
+            return sendJson(res,200,(await sourceComparisonStore.latestComparison({tenantId:principal.tenantId}))||{comparisonId:null},{requestId});
+          }
+          if(req.method==='POST'&&url.pathname==='/api/integrity/sources/snapshots'){
+            requirePermission(principal,'integration.test');
+            const value=await readJson(req,64000);
+            return sendJson(res,201,await sourceComparisonStore.importSnapshot({...value,tenantId:principal.tenantId,actorRef:principal.id}),{requestId});
+          }
+          if(req.method==='POST'&&url.pathname==='/api/integrity/sources/compare'){
+            requirePermission(principal,'review.read');
+            return sendJson(res,200,await sourceComparisonStore.compareLatest({tenantId:principal.tenantId,actorRef:principal.id}),{requestId});
+          }
+          if(req.method==='GET'&&url.pathname==='/api/integrity/sources/assessments'){
+            requirePermission(principal,'review.read');
+            return sendJson(res,200,{items:await sourceComparisonStore.assessments({tenantId:principal.tenantId,comparisonId:url.searchParams.get('comparisonId')})},{requestId});
+          }
+          if(req.method==='POST'&&url.pathname==='/api/integrity/sources/assessments'){
+            requirePermission(principal,'review.resolve');
+            const value=await readJson(req);
+            return sendJson(res,201,await sourceComparisonStore.assess({...value,tenantId:principal.tenantId,actorRef:principal.id}),{requestId});
+          }
         }
         if(req.method==='POST'&&url.pathname==='/api/integrity/intakes'){
           requirePermission(principal,'intake.submit');
