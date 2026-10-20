@@ -25,7 +25,7 @@ for(const vp of viewports){
     navCount:document.querySelectorAll('.nav button').length
   }));
   if(layout.title!=='Intake Integrity · Control plane') throw new Error(vp.name+': title missing');
-  if(!layout.brand.includes('v0.6.2')) throw new Error(vp.name+': stale demo version');
+  if(!layout.brand.includes('Intake Integrity')||!layout.brand.includes('Sales intake')) throw new Error(vp.name+': operator branding missing');
   if(layout.scrollWidth>layout.viewport+2) throw new Error(vp.name+': horizontal overflow '+layout.scrollWidth+'>'+layout.viewport);
   if(layout.active!=='overview') throw new Error(vp.name+': overview not active');
   if(layout.navCount<7) throw new Error(vp.name+': operator navigation incomplete');
