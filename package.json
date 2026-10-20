@@ -15,11 +15,12 @@
     "controls:check": "node scripts/control-health.mjs",
     "service": "node service/server.mjs",
     "test:unit": "node --test tests/*.test.js",
-    "test:integration:postgres": "node --test tests/integration/postgres.live.test.js",
+    "test:integration:postgres": "node --test tests/integration/postgres.live.test.js tests/integration/sales-integrity.live.test.js",
     "test:integration:aws": "node --test tests/integration/aws.live.test.js",
     "test:integration:one-c": "node --test tests/integration/one-c.live.test.js",
     "test:integration": "node --test tests/integration/*.live.test.js",
-    "worker:delivery": "node service/delivery-worker.mjs"
+    "worker:delivery": "node service/delivery-worker.mjs",
+    "test:integration:sales-integrity": "node --test tests/integration/sales-integrity.live.test.js"
   },
   "engines": {
     "node": ">=20"
