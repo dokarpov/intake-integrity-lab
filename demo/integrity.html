@@ -41,6 +41,7 @@ p{margin:10px 0 0}.intro p{max-width:660px;font-size:15px;color:#545454;line-hei
 .auth-bar{margin-bottom:24px;padding:15px 18px;border:1px solid #dfdfdf;border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:14px}
 .auth-bar strong{font-size:13px}.auth-bar span{color:#5a5a5a;font-size:12px}
 .auth-panel{padding:13px 17px;border:1px solid #e0e0e0;border-radius:8px;margin-bottom:20px}
+.checkline{display:flex;gap:9px;align-items:flex-start;font-size:12px;line-height:1.5;margin:12px 0;color:#454545}.checkline input{flex:0 0 17px;width:17px;height:17px;margin:2px 0;accent-color:#202020}.kv[hidden]{display:none}
 .auth-panel .field{margin-bottom:10px}
 .timeline{padding:0;margin:10px 0 0;list-style:none}
 .timeline li{padding:10px 0;border-bottom:1px solid #e8e8e8;font-size:12px;color:#454545;overflow-wrap:anywhere}
@@ -88,13 +89,26 @@ p{margin:10px 0 0}.intro p{max-width:660px;font-size:15px;color:#545454;line-hei
 <div class="kv"><h3>CRM delivery</h3><div id="delivery-state"></div>
 <p class="hint">Writes are queued only after a separately verified authorized decision. Uncertain outcomes require reconciliation.</p></div>
 </section>
+<div class="kv" id="decision-panel" hidden>
+<h3>3. Your decision (fictional sandbox)</h3>
+<p class="hint">This testing environment simulates independently verified evidence. It does not verify a real person, grant permission to contact anyone or send records to a real CRM.</p>
+<div class="field"><label for="review-action">What should happen?</label>
+<select id="review-action"><option value="link_existing">Link an existing customer</option><option value="create_new">Create a separate person</option><option value="discard">Discard this enquiry</option></select></div>
+<div class="field" id="person-field"><label for="review-person">Choose a candidate</label><select id="review-person"></select></div>
+<div class="field"><label for="review-reason">Reason for your decision</label>
+<textarea id="review-reason" maxlength="1000" placeholder="Explain what was checked and why this is the correct action"></textarea></div>
+<label class="checkline"><input id="simulate-identity" type="checkbox">Simulate an independent identity check for this fictional case</label>
+<label class="checkline" id="consent-line"><input id="simulate-consent" type="checkbox">Simulate verified contact permission for this fictional case</label>
+<button class="action" type="button" id="submit-decision">Record my decision in PostgreSQL</button>
+<p class="hint" id="decision-message" role="status"></p>
+</div>
 </section></div>
 </main><footer class="foot">Staging console. The product’s intended operating surface is the existing CRM or 1C—not another daily queue. Authenticated approval and live CRM delivery are separate release gates.</footer></div>
 <script>
 'use strict';
 const $=id=>document.getElementById(id);
 const local=['localhost','127.0.0.1'].includes(location.hostname);
-const state={token:'',selected:null,connected:false};
+const state={token:'',selected:null,connected:false,candidates:[],decisionKey:null};
 const text=(id,value)=>{$(id).textContent=String(value??'')};
 const make=(tag,content,cls='')=>{const n=document.createElement(tag);n.textContent=String(content??'');if(cls)n.className=cls;return n};
 function row(k,v){const d=make('div','','text-row');d.append(make('b',k),make('span',v));return d}
@@ -131,7 +145,7 @@ async function refresh(){
  }catch(e){root.append(make('p',e.message,'err'))}
 }
 async function inspect(intakeId){
- state.selected=intakeId;$('details').hidden=false;
+ state.selected=intakeId;state.candidates=[];$('decision-panel').hidden=true;$('details').hidden=false;
  text('detail-title','Loading enquiry…');
  for(const id of ['detail-fields','candidates','audit-list','delivery-state'])$(id).replaceChildren();
  try{
@@ -152,6 +166,17 @@ async function inspect(intakeId){
   const c=$('candidates');
   if(!candidates.items.length)c.append(make('p','No existing identifier overlap. This is not proof the person is new.','empty'));
   for(const p of candidates.items)c.append(row(p.name,'Candidate · '+p.personId.slice(0,8)));
+  state.candidates=candidates.items;
+  const select=$('review-person');select.replaceChildren();
+  for(const person of candidates.items){
+   const option=document.createElement('option');option.value=person.personId;option.textContent=person.name;select.append(option);
+  }
+  if(!candidates.items.length){
+   const option=document.createElement('option');option.value='';option.textContent='No existing candidates';select.append(option);
+  }
+  $('review-action').value=candidates.items.length?'link_existing':'create_new';
+  updateDecisionForm();
+  $('decision-panel').hidden=!['review_needed','received'].includes(detail.state);
   const a=$('audit-list');
   for(const x of history.events||[])a.append(make('li',x.action+' · '+x.actorId));
   if(history.integrityOk===false)a.prepend(make('li','Audit integrity verification failed','err'));
@@ -163,6 +188,48 @@ async function inspect(intakeId){
   }catch(e){$('delivery-state').append(make('p',e.message,'err'))}
  }catch(e){text('detail-title',e.message)}
 }
+function updateDecisionForm(){
+ const action=$('review-action').value;
+ $('person-field').hidden=action!=='link_existing';
+ $('consent-line').hidden=action==='discard';
+ $('simulate-consent').checked=false;
+ if(action==='link_existing'&&!state.candidates.length)$('review-person').replaceChildren();
+}
+$('review-action').addEventListener('change',updateDecisionForm);
+$('submit-decision').addEventListener('click',async()=>{
+ const btn=$('submit-decision'),intakeId=state.selected;
+ if(!intakeId)return;
+ const action=$('review-action').value;
+ const personId=action==='link_existing'?$('review-person').value:null;
+ const reason=$('review-reason').value.trim();
+ if(reason.length<8){text('decision-message','Enter a specific reason (at least eight characters).');return}
+ if(action==='link_existing'&&!personId){text('decision-message','Select an existing candidate.');return}
+ if(!$('simulate-identity').checked|| (action!=='discard'&&!$('simulate-consent').checked)){
+  text('decision-message','Confirm which fictional evidence you want the sandbox to simulate.');return;
+ }
+ btn.disabled=true;btn.textContent='Recording…';
+ try{
+  const issued=await api('/api/integrity/sandbox/evidence',{
+   method:'POST',body:JSON.stringify({
+    intakeId,action,personId,simulateEvidence:true,
+    simulateConsent:action==='discard'?false:true
+   })
+  });
+  if(!state.decisionKey)state.decisionKey=crypto.randomUUID();
+  const result=await api('/api/integrity/intakes/'+encodeURIComponent(intakeId)+'/decisions',{
+   method:'POST',body:JSON.stringify({
+    requestKey:state.decisionKey,action,personId,reason,
+    identityEvidenceRef:issued.identityEvidenceRef,
+    consentEvidenceRef:issued.consentEvidenceRef,
+    policyVersion:'fictional-sandbox-v1',destination:'crm-simulator'
+   })
+  });
+  text('decision-message','Decision saved. The CRM outbox entry is in PostgreSQL.');
+  state.decisionKey=null;await refresh();await inspect(intakeId);
+ }catch(e){text('decision-message',e.message)}
+ finally{btn.disabled=false;btn.textContent='Record my decision in PostgreSQL'}
+});
+
 $('intake-form').addEventListener('submit',async e=>{
  e.preventDefault();const btn=$('submit-intake');btn.disabled=true;btn.textContent='Submitting…';
  try{
