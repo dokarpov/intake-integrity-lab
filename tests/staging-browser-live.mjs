@@ -20,7 +20,7 @@ try{
    await page.locator('#customer-name').fill('Sam Lee');
    await page.locator('#customer-email').fill('sam@example.com');
    await page.getByRole('button',{name:'Submit to PostgreSQL'}).click();
-   await page.locator('#response-json').getByText(/candidateCount/).waitFor({timeout:12000}).catch(()=>{});
+   await page.waitForFunction(() => document.querySelector('#response-json')?.textContent?.includes('candidateCount'),null,{timeout:12000});
    const resp=JSON.parse(await page.locator('#response-json').innerText());
    if(resp.candidateCount!==2||resp.replayed!==false)throw new Error('Expected two candidates, got '+JSON.stringify(resp));
    await page.locator('#details').waitFor();
