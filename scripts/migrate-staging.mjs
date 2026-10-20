@@ -8,7 +8,8 @@ const files=[
   'infra/postgres/001_ledger.sql',
   'infra/postgres/migrations/002_service_workflows.sql',
   'infra/postgres/migrations/003_sales_integrity.sql',
-  'infra/postgres/migrations/004_sandbox_crm.sql'
+  'infra/postgres/migrations/004_sandbox_crm.sql',
+  'infra/postgres/migrations/005_source_comparison.sql'
 ];
 const apply=process.argv.includes('--apply');
 if(!apply){
