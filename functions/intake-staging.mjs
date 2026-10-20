@@ -41,7 +41,7 @@ function fail(code,status=400){
 }
 function validAccess(request){
  const h=request.headers.get('authorization')||'';
- const m=/^Bearer ([^\\s]+)$/.exec(h);
+ const m=/^Bearer (\S+)$/.exec(h);
  if(!m)return false;
  const value=Buffer.from(m[1]),wanted=Buffer.from(token);
  return value.length===wanted.length&&timingSafeEqual(value,wanted);
