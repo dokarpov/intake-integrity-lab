@@ -10,6 +10,7 @@ import { TenantRuntimeRegistry } from '../src/service/runtime.js';
 import { AwsKmsHmacPseudonymizer } from '../src/compliance/pseudonymizer-kms.js';
 import { createApiHandler } from '../src/service/app.js';
 import { PostgresSalesIntegrity } from '../src/sales-integrity/postgres-integrity.js';
+import { SandboxDecisionEvidence } from '../src/sales-integrity/sandbox-evidence.js';
 import { HttpIdentityResolver } from '../src/integrations/identity/http-resolver.js';
 
 const here=dirname(fileURLToPath(import.meta.url)), root=resolve(here,'..');
@@ -47,7 +48,16 @@ if(integrityEnabled&&(!pool||!process.env.INTEGRITY_FINGERPRINT_HMAC_SECRET)){
 const integrityStore=integrityEnabled?new PostgresSalesIntegrity({
   pool,fingerprintSecret:process.env.INTEGRITY_FINGERPRINT_HMAC_SECRET
 }):null;
-const api=createApiHandler({authenticator,runtimes,policies,rateLimiter:limiter,intakeConfig:config.intake||{},oneCConfig,identityResolver,integrityStore});
+const sandboxEnabled=integrityEnabled&&process.env.NODE_ENV==='staging'&&process.env.INTEGRITY_SANDBOX_ENABLED==='true';
+if(sandboxEnabled&&!process.env.SANDBOX_EVIDENCE_HMAC_SECRET)throw new Error('sandbox_evidence_secret_required');
+const sandboxEvidenceProvider=sandboxEnabled?new SandboxDecisionEvidence({
+  secret:process.env.SANDBOX_EVIDENCE_HMAC_SECRET,integrityStore,tenantId:'staging-demo'
+}):null;
+const api=createApiHandler({
+  authenticator,runtimes,policies,rateLimiter:limiter,intakeConfig:config.intake||{},
+  oneCConfig,identityResolver,integrityStore,
+  integrityEvidenceVerifier:sandboxEvidenceProvider,sandboxEvidenceProvider
+});
 const consoleHtml=readFileSync(resolve(root,'demo/index.html'),'utf8');
 const integrityTestHtml=integrityEnabled?readFileSync(resolve(root,'demo/integrity.html'),'utf8'):null;
 const server=createServer(async(req,res)=>{
