@@ -87,6 +87,11 @@ CREATE TABLE IF NOT EXISTS sales_person_relationships (
     ON DELETE RESTRICT
 );
 
+CREATE INDEX IF NOT EXISTS sales_person_relationships_from_idx
+  ON sales_person_relationships(tenant_id,from_person_id,created_at DESC);
+CREATE INDEX IF NOT EXISTS sales_person_relationships_to_idx
+  ON sales_person_relationships(tenant_id,to_person_id,created_at DESC);
+
 CREATE TABLE IF NOT EXISTS sales_intake_decisions (
   tenant_id text NOT NULL,
   decision_id uuid NOT NULL DEFAULT gen_random_uuid(),
