@@ -49,8 +49,15 @@ const integrityStore=integrityEnabled?new PostgresSalesIntegrity({
 }):null;
 const api=createApiHandler({authenticator,runtimes,policies,rateLimiter:limiter,intakeConfig:config.intake||{},oneCConfig,identityResolver,integrityStore});
 const consoleHtml=readFileSync(resolve(root,'demo/index.html'),'utf8');
+const integrityTestHtml=integrityEnabled?readFileSync(resolve(root,'demo/integrity.html'),'utf8'):null;
 const server=createServer(async(req,res)=>{
   if(req.method==='GET'&&(req.url==='/'||req.url==='/console')){res.writeHead(200,{'content-type':'text/html; charset=utf-8','cache-control':'no-store','content-security-policy':"default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",'x-frame-options':'DENY','x-content-type-options':'nosniff','referrer-policy':'no-referrer'});return res.end(consoleHtml)}
+  if(req.method==='GET'&&req.url==='/integrity'&&integrityTestHtml){
+    res.writeHead(200,{'content-type':'text/html; charset=utf-8','cache-control':'no-store',
+      'content-security-policy':"default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+      'x-frame-options':'DENY','x-content-type-options':'nosniff','referrer-policy':'no-referrer'});
+    return res.end(integrityTestHtml);
+  }
   return api(req,res);
 });
 const port=Number(process.env.PORT||8787),host=process.env.HOST||'127.0.0.1';server.listen(port,host,()=>process.stdout.write(`intake-integrity v0.6 listening on http://${host}:${port}\n`));
