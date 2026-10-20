@@ -42,7 +42,7 @@ export function createApiHandler({authenticator,runtimes,policies,rateLimiter,in
             throw Object.assign(new Error('sandbox_disabled'),{statusCode:404});
           const body=await readJson(req);
           const result=await sandboxCrmSimulator.runOnce({
-            mode:body.mode==='lost_ack'?'lost_ack':'success',limit:10
+            mode:body.mode==='lost_ack'?'lost_ack':'success',limit:1,outboxId:body.outboxId
           });
           return sendJson(res,200,result,{requestId});
         }
