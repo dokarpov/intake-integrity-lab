@@ -97,6 +97,8 @@ jobs:
       DATABASE_URL: postgres://ledger_admin:local-dev-only@127.0.0.1:5432/ledger
       INTAKE_MIGRATION_TARGET: staging
       INTEGRITY_PG_V2_ENABLED: 'true'
+      INTEGRITY_SANDBOX_ENABLED: 'true'
+      SANDBOX_EVIDENCE_HMAC_SECRET: ci-only-hmac-for-fictional-review-decisions-signing-key
       INTEGRITY_FINGERPRINT_HMAC_SECRET: ci-only-synthetic-identity-fingerprints-32-chars
       STAGING_FIXTURES: 'true'
       NODE_ENV: staging
