@@ -7,6 +7,8 @@ import {Pool} from 'pg';
 import {PostgresSalesIntegrity} from '../src/sales-integrity/postgres-integrity.js';
 import {SandboxDecisionEvidence} from '../src/sales-integrity/sandbox-evidence.js';
 import {SandboxCrmSimulator} from '../src/sales-integrity/sandbox-crm.js';
+import {PostgresSourceComparison} from '../src/sales-integrity/source-comparison.js';
+import sourceHtml from '../demo/source-comparison.html';
 import html from '../demo/integrity.html';
 
 if(process.env.NODE_ENV!=='staging')throw Error('staging_only_runtime');
@@ -23,6 +25,7 @@ pool.on('error',(e)=>console.error('staging pool idle connection issue:',e.code|
 const integrity=new PostgresSalesIntegrity({pool,fingerprintSecret});
 const evidence=new SandboxDecisionEvidence({integrityStore:integrity,secret:evidenceSecret});
 const crm=new SandboxCrmSimulator({pool,integrity});
+const sources=new PostgresSourceComparison({pool});
 const tenantId='staging-demo',actorId='sandbox.operator';
 const samples=[
  {name:'Sam Lee - Studio North',email:'sam@example.com',ref:'demo-crm-north'},
@@ -46,11 +49,11 @@ function validAccess(request){
  const value=Buffer.from(m[1]),wanted=Buffer.from(token);
  return value.length===wanted.length&&timingSafeEqual(value,wanted);
 }
-async function body(request){
+async function body(request,max=16000){
  const len=Number(request.headers.get('content-length')||0);
- if(len>16000)throw Error('request_too_large');
+ if(len>max)throw Error('request_too_large');
  const raw=await request.text();
- if(raw.length>16000)throw Error('request_too_large');
+ if(raw.length>max)throw Error('request_too_large');
  let parsed;try{parsed=JSON.parse(raw)}catch{throw Error('invalid_json')}
  if(!parsed||Array.isArray(parsed)||typeof parsed!=='object')throw Error('json_object_required');
  return parsed;
@@ -85,6 +88,8 @@ function guardDestination(v){
 }
 async function route(request){
  const url=new URL(request.url),path=url.pathname,method=request.method;
+ if(method==='GET'&&path==='/sources')
+  return new Response(sourceHtml,{status:200,headers:{...headers,'content-type':'text/html; charset=utf-8'}});
  if(method==='GET'&&(path==='/'||path==='/integrity'))
   return new Response(html,{status:200,headers:{...headers,'content-type':'text/html; charset=utf-8'}});
  if(method==='GET'&&path==='/healthz')return json({ok:true,service:'intake-integrity-staging',mode:'synthetic'});
@@ -95,6 +100,24 @@ async function route(request){
  if(!path.startsWith('/api/'))return fail('not_found',404);
  if(!validAccess(request))return fail('unauthorized',401);
  await seedFictional();
+ if(method==='GET'&&path==='/api/integrity/sources/latest')
+  return json(await sources.latest({tenantId}));
+ if(method==='GET'&&path==='/api/integrity/sources/comparison/latest')
+  return json((await sources.latestComparison({tenantId}))||{comparisonId:null});
+ if(method==='POST'&&path==='/api/integrity/sources/snapshots'){
+  const v=await body(request,64000);
+  return json(await sources.importSnapshot({...v,tenantId,actorRef:actorId}));
+ }
+ if(method==='POST'&&path==='/api/integrity/sources/compare')
+  return json(await sources.compareLatest({tenantId,actorRef:actorId}));
+ if(method==='GET'&&path==='/api/integrity/sources/assessments'){
+  const id=validId(url.searchParams.get('comparisonId'));
+  return json({items:await sources.assessments({tenantId,comparisonId:id})});
+ }
+ if(method==='POST'&&path==='/api/integrity/sources/assessments'){
+  const v=await body(request);
+  return json(await sources.assess({...v,comparisonId:validId(v.comparisonId),tenantId,actorRef:actorId}));
+ }
  if(method==='GET'&&path==='/api/me')return json({
    id:actorId,name:'Staging reviewer',tenantId,roles:['sales','reviewer','auditor','integration_admin'],
    permissions:['intake.submit','review.read','review.resolve','audit.read','integration.read','integration.test']
@@ -151,8 +174,8 @@ export default {
   catch(err){
    const name=String(err?.message||'');
    const status=/not_found/.test(name)?404:
-     /already_decided|idempotency_key_payload_conflict|delivery_lease_conflict/.test(name)?409:
-     /required|invalid|forbidden|not_allowed|not_candidate|not_reviewable|consent|selected|too_short|does_not_match|outbox_id/.test(name)?400:500;
+     /already_decided|idempotency_key_payload_conflict|delivery_lease_conflict|source_import_key_conflict|assessment_key_conflict/.test(name)?409:
+     /required|invalid|forbidden|not_allowed|not_candidate|not_reviewable|consent|selected|too_short|does_not_match|outbox_id|unsupported|snapshot|source_import|duplicate_source|assessment_choice|assessment_reason|both_source/.test(name)?400:500;
    if(status===500)console.error('staging request failed:',err?.code||name);
    return fail(status===500?'internal_error':name,status);
   }
