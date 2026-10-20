@@ -63,7 +63,7 @@ select{width:100%;border:1px solid #bbb;padding:12px;border-radius:6px;font-size
 <div class="samplehint" id="bitrix-preview">No file selected.</div>
 <button class="btn outline" type="button" id="bitrix-upload">Import Bitrix24 snapshot</button></article>
 </section>
-<details><summary>CSV columns and mapping assumptions</summary><p class="steps">Header names: <code>sourceRecordId, sharedKey, company, counterpartyType, contactRef, ownerRef, originalStatus</code>. Russian aliases supported for common columns: ИД, ВнешнийКод, Контрагент, ТипКонтрагента, Контакт, Ответственный, Статус. The <b>sharedKey must be explicitly mapped across systems</b>; a matching name is not identity proof. Unsupported exports need mapping, not guessing. Import limited to 100 fictional/anonymized rows per source.</p></details>
+<details><summary>CSV columns and mapping assumptions</summary><p class="steps">UTF-8 or Windows-1251 CSV; comma, semicolon or tab separators supported. Header names: <code>sourceRecordId, sharedKey, company, counterpartyType, contactRef, ownerRef, originalStatus</code>. Russian aliases supported for common columns: ИД, ВнешнийКод, Контрагент, ТипКонтрагента, Контакт, Ответственный, Статус. The <b>sharedKey must be explicitly mapped across systems</b>; a matching name is not identity proof. Unsupported exports need mapping, not guessing. Import limited to 100 fictional/anonymized rows per source.</p></details>
 <div class="controls"><button class="btn" id="compare">Compare latest imported snapshots</button><button class="btn outline" id="reload">Reload last comparison</button><span id="compare-status" class="status" role="status"></span></div>
 <section id="report" class="report" hidden>
 <div class="kicker">Evidence comparison · no writes to either source</div><h2 id="report-title">Comparison</h2><p class="reportdesc" id="report-desc"></p><div class="summary" id="summary"></div>
@@ -103,11 +103,16 @@ async function connect(){
  catch(e){$('connection').textContent='Authentication required';$('auth-panel').hidden=false}
 }
 function parseCsv(text){
+ text=text.replace(/^\uFEFF/,'');
+ const firstLine=text.split(/\r?\n/,1)[0];
+ const counts=[',',';','\t'].map(c=>[c,(firstLine.split(c).length-1)]);
+ counts.sort((a,b)=>b[1]-a[1]);
+ const delimiter=counts[0][1]>0?counts[0][0]:',';
  const rows=[],line=[];let str='',quoted=false;
  for(let i=0;i<text.length;i++){
   const ch=text[i];
   if(ch==='"'){if(quoted&&text[i+1]==='"'){str+='"';i++}else quoted=!quoted}
-  else if(ch===','&&!quoted){line.push(str);str=''}
+  else if(ch===delimiter&&!quoted){line.push(str);str=''}
   else if((ch==='\n'||ch==='\r')&&!quoted){
    if(ch==='\r'&&text[i+1]==='\n')i++;
    line.push(str);str='';
@@ -187,7 +192,14 @@ $('load-example').addEventListener('click',()=>safe($('load-example'),async()=>{
 for(const [source,prefix] of [['1c','one'],['bitrix24','bitrix']]){
  $(prefix+'-file').addEventListener('change',async()=>{
   const file=$(prefix+'-file').files[0];if(!file)return;
-  try{files[source]=parseCsv(await file.text());$(prefix+'-preview').textContent=files[source].length+' rows ready for import.'}
+  try{
+   const bytes=await file.arrayBuffer();
+   let decoded;
+   try{decoded=new TextDecoder('utf-8',{fatal:true}).decode(bytes)}
+   catch{decoded=new TextDecoder('windows-1251').decode(bytes)}
+   files[source]=parseCsv(decoded);
+   $(prefix+'-preview').textContent=files[source].length+' rows ready for import.';
+  }
   catch(e){files[source]=null;$(prefix+'-preview').textContent=e.message}
  });
  $(prefix+'-upload').addEventListener('click',()=>safe($(prefix+'-upload'),async()=>{
