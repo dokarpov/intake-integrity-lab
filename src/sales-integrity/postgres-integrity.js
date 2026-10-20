@@ -152,6 +152,77 @@ export class PostgresSalesIntegrity {
       return {tenantId,intakeId,state,candidateCount:matches.rows.length,replayed:false};
     });
   }
+
+  // Read-only projections for the authenticated staging console.
+  // Do not expose raw identifier fingerprints or payload secrets.
+  async listIntakes({tenantId,limit=50}={}){
+    required(tenantId,'tenant_id');
+    if(!Number.isInteger(limit)||limit<1||limit>100)throw new Error('invalid_list_limit');
+    const q=await this.pool.query(
+      `SELECT i.intake_id,i.display_name,i.source,i.source_event_key,
+        i.processing_state,i.created_at,
+        (SELECT count(*)::int FROM sales_intake_candidates c
+         WHERE c.tenant_id=i.tenant_id AND c.intake_id=i.intake_id) AS candidate_count,
+        d.action AS decision_action,d.person_id AS selected_person_id,
+        o.state AS delivery_state
+       FROM sales_incoming_enquiries i
+       LEFT JOIN sales_intake_decisions d
+         ON d.tenant_id=i.tenant_id AND d.intake_id=i.intake_id
+       LEFT JOIN sales_crm_outbox_v2 o
+         ON o.tenant_id=i.tenant_id AND o.intake_id=i.intake_id
+       WHERE i.tenant_id=$1 ORDER BY i.created_at DESC,i.intake_id DESC LIMIT $2`,
+      [tenantId,limit]
+    );
+    return q.rows.map(r=>({
+      intakeId:r.intake_id,name:r.display_name,source:r.source,
+      sourceEventKey:r.source_event_key,state:r.processing_state,
+      candidateCount:r.candidate_count,decisionAction:r.decision_action,
+      selectedPersonId:r.selected_person_id,deliveryState:r.delivery_state,
+      createdAt:r.created_at
+    }));
+  }
+  async getIntake({tenantId,intakeId}={}){
+    required(tenantId,'tenant_id');required(intakeId,'intake_id');
+    const q=await this.pool.query(
+      `SELECT i.intake_id,i.display_name,i.source,i.source_event_key,
+        i.context_json,i.processing_state,i.consent_evidence_ref,i.created_at,
+        d.action AS decision_action,d.person_id AS selected_person_id,
+        d.actor_id AS decision_actor,d.reason AS decision_reason,
+        d.policy_version AS decision_policy_version,
+        d.identity_evidence_ref AS decision_evidence_ref
+       FROM sales_incoming_enquiries i
+       LEFT JOIN sales_intake_decisions d
+         ON d.tenant_id=i.tenant_id AND d.intake_id=i.intake_id
+       WHERE i.tenant_id=$1 AND i.intake_id=$2`,
+      [tenantId,intakeId]
+    );
+    const r=q.rows[0];
+    if(!r)return null;
+    return {intakeId:r.intake_id,name:r.display_name,source:r.source,
+      sourceEventKey:r.source_event_key,context:r.context_json,
+      state:r.processing_state,consentReferencePresent:Boolean(r.consent_evidence_ref),
+      createdAt:r.created_at,
+      decision:r.decision_action?{action:r.decision_action,personId:r.selected_person_id,
+        actorId:r.decision_actor,reason:r.decision_reason,
+        policyVersion:r.decision_policy_version,
+        identityEvidenceRef:r.decision_evidence_ref}:null};
+  }
+  async listPeople({tenantId,limit=100}={}){
+    required(tenantId,'tenant_id');
+    if(!Number.isInteger(limit)||limit<1||limit>100)throw new Error('invalid_list_limit');
+    const q=await this.pool.query(
+      `SELECT p.person_id,p.display_name,p.created_at,
+        count(i.identifier_id)::int AS identifier_count
+       FROM sales_identity_people p LEFT JOIN sales_person_identifiers i
+       ON i.tenant_id=p.tenant_id AND i.person_id=p.person_id
+       WHERE p.tenant_id=$1 GROUP BY p.tenant_id,p.person_id
+       ORDER BY p.created_at DESC,p.person_id DESC LIMIT $2`,
+      [tenantId,limit]
+    );
+    return q.rows.map(r=>({personId:r.person_id,name:r.display_name,
+      identifierCount:r.identifier_count,createdAt:r.created_at}));
+  }
+
   async candidates({tenantId,intakeId}){
     required(tenantId,'tenant_id');required(intakeId,'intake_id');
     const q=await this.pool.query(`SELECT p.person_id,p.display_name,c.match_reasons
