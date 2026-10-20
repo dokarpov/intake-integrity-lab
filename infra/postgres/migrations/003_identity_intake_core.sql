@@ -77,12 +77,15 @@ CREATE TABLE IF NOT EXISTS sales_intakes (
 CREATE INDEX IF NOT EXISTS sales_intakes_pending_idx
   ON sales_intakes(tenant_id,created_at) WHERE state='needs_review';
 -- Existing service review items have globally unique IDs; add tenant-scoped FK.
-ALTER TABLE sales_review_items
-  ADD CONSTRAINT sales_review_items_tenant_id_uniq UNIQUE (tenant_id,id);
-ALTER TABLE sales_intakes
-  ADD CONSTRAINT sales_intakes_review_fk
-  FOREIGN KEY (tenant_id,review_id) REFERENCES sales_review_items(tenant_id,id)
-  DEFERRABLE INITIALLY DEFERRED;
+CREATE UNIQUE INDEX IF NOT EXISTS sales_review_items_tenant_id_uniq
+  ON sales_review_items(tenant_id,id);
+DO $do$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='sales_intakes_review_fk') THEN
+    ALTER TABLE sales_intakes ADD CONSTRAINT sales_intakes_review_fk
+      FOREIGN KEY (tenant_id,review_id) REFERENCES sales_review_items(tenant_id,id)
+      DEFERRABLE INITIALLY DEFERRED;
+  END IF;
+END $do$;
 
 -- Candidate links are observational: never an auto-verified identity assignment.
 CREATE TABLE IF NOT EXISTS sales_intake_candidates (
@@ -125,7 +128,62 @@ CREATE TABLE IF NOT EXISTS sales_intake_decisions (
   evidence_ref text NOT NULL CHECK (length(evidence_ref)>0),
   reason text NOT NULL CHECK (length(reason) BETWEEN 10 AND 1000),
   policy_version text NOT NULL CHECK (length(policy_version)>0),
-  decision_token text NOT NULL CHECK (decision_token ~ '^[0-9a-f]{64}$'),
+  decision_token text NOT NULL CHECK (decision_token ~ '^[0-9a-f]{64}
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (tenant_id,id),
+  UNIQUE (tenant_id,intake_id),
+  UNIQUE (tenant_id,decision_token),
+  FOREIGN KEY (tenant_id,intake_id) REFERENCES sales_intakes(tenant_id,id) ON DELETE RESTRICT,
+  FOREIGN KEY (tenant_id,selected_person_id) REFERENCES sales_persons(tenant_id,id) ON DELETE RESTRICT,
+  CHECK ((action='discard' AND selected_person_id IS NULL)
+     OR (action IN ('link_existing','create_person') AND selected_person_id IS NOT NULL))
+);
+
+CREATE OR REPLACE FUNCTION sales_reject_history_mutation() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  RAISE EXCEPTION 'intake decision history is append-only';
+END $$;
+DROP TRIGGER IF EXISTS sales_intake_events_immutable ON sales_intake_events;
+CREATE TRIGGER sales_intake_events_immutable BEFORE UPDATE OR DELETE
+  ON sales_intake_events FOR EACH ROW EXECUTE FUNCTION sales_reject_history_mutation();
+DROP TRIGGER IF EXISTS sales_intake_decisions_immutable ON sales_intake_decisions;
+CREATE TRIGGER sales_intake_decisions_immutable BEFORE UPDATE OR DELETE
+  ON sales_intake_decisions FOR EACH ROW EXECUTE FUNCTION sales_reject_history_mutation();
+
+-- Operational privileges: revoke UPDATE/DELETE/TRUNCATE on events and decisions
+-- from the application role; do not run as schema owner or PostgreSQL superuser.
+-- The existing signed/WORM compliance ledger is an additional, separately
+-- anchored audit boundary. This DB trigger is NOT independently immutable.
+COMMIT;
+),
+  decision_digest text NOT NULL CHECK (decision_digest ~ '^[0-9a-f]{64}
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (tenant_id,id),
+  UNIQUE (tenant_id,intake_id),
+  UNIQUE (tenant_id,decision_token),
+  FOREIGN KEY (tenant_id,intake_id) REFERENCES sales_intakes(tenant_id,id) ON DELETE RESTRICT,
+  FOREIGN KEY (tenant_id,selected_person_id) REFERENCES sales_persons(tenant_id,id) ON DELETE RESTRICT,
+  CHECK ((action='discard' AND selected_person_id IS NULL)
+     OR (action IN ('link_existing','create_person') AND selected_person_id IS NOT NULL))
+);
+
+CREATE OR REPLACE FUNCTION sales_reject_history_mutation() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  RAISE EXCEPTION 'intake decision history is append-only';
+END $$;
+DROP TRIGGER IF EXISTS sales_intake_events_immutable ON sales_intake_events;
+CREATE TRIGGER sales_intake_events_immutable BEFORE UPDATE OR DELETE
+  ON sales_intake_events FOR EACH ROW EXECUTE FUNCTION sales_reject_history_mutation();
+DROP TRIGGER IF EXISTS sales_intake_decisions_immutable ON sales_intake_decisions;
+CREATE TRIGGER sales_intake_decisions_immutable BEFORE UPDATE OR DELETE
+  ON sales_intake_decisions FOR EACH ROW EXECUTE FUNCTION sales_reject_history_mutation();
+
+-- Operational privileges: revoke UPDATE/DELETE/TRUNCATE on events and decisions
+-- from the application role; do not run as schema owner or PostgreSQL superuser.
+-- The existing signed/WORM compliance ledger is an additional, separately
+-- anchored audit boundary. This DB trigger is NOT independently immutable.
+COMMIT;
+),
   created_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (tenant_id,id),
   UNIQUE (tenant_id,intake_id),
