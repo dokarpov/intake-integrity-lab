@@ -1,53 +1,106 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#ffffff"><title>Intake Integrity | Source comparison</title>
 <style>
-:root{font-family:"DM Sans",Arial,sans-serif;color:#191919;background:#fff;line-height:1.5}
-*,*:before,*:after{box-sizing:border-box}html,body{margin:0;background:#fff;min-width:320px}
+:root{font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;color:#202020;background:#fff;line-height:1.5}
+*,*::before,*::after{box-sizing:border-box}body{margin:0;background:#fff;min-width:320px}
 button,input,textarea,select{font:inherit}button{cursor:pointer}
-button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid #1b1b1b;outline-offset:3px}
-.wrap{max-width:1180px;padding:0 28px;margin:0 auto}.nav{height:70px;display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:1px solid #ececec}
-.brand{font-weight:800;letter-spacing:-.06em;font-size:19px}.nav a{color:#303030;font-size:12px;font-weight:700}
-.hero{padding:49px 0 34px;max-width:830px}.kicker{text-transform:uppercase;font-size:11px;font-weight:800;letter-spacing:.08em;color:#575757}
-h1,h2,h3,p{margin:0}h1,h2,h3{line-height:1.12;letter-spacing:-.055em}
-h1{font-size:clamp(39px,5.8vw,73px);margin:15px 0 20px;font-weight:700}h2{font-size:23px;margin:0 0 6px}h3{font-size:18px}
-.hero p{font-size:16px;color:#4b4b4b;line-height:1.7;max-width:690px}
-.authbar{border:1px solid #d7d7d7;border-radius:9px;display:flex;justify-content:space-between;align-items:center;gap:15px;padding:14px 19px;margin-bottom:23px;flex-wrap:wrap}
-.authbar span{font-size:13px;font-weight:700}.btn{border-radius:6px;background:#222;border:1px solid #222;padding:11px 17px;color:#fff;font-weight:750;min-height:45px;font-size:13px}
-.btn:hover{background:#444}.btn:disabled{opacity:.5;cursor:wait}
-.outline{background:#fff;color:#222;border:1px solid #a7a7a7}.outline:hover{background:#f6f6f6}
-.fields{display:grid;grid-template-columns:1fr 1fr;gap:17px}
-.panel{border:1px solid #dcdcdc;border-radius:10px;padding:23px;min-width:0}
-.panel p{font-size:13px;color:#535353;line-height:1.62;margin-bottom:20px}
-.caption{font-weight:700;font-size:12px;color:#3d3d3d;display:block;margin:11px 0 6px}
-.fileinput{width:100%;font-size:13px;border:1px dashed #aaa;border-radius:6px;padding:13px}
-.samplehint{font-size:12px;color:#676767;line-height:1.6;margin:13px 0}
-.controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:19px 0 34px}
-.status{font-size:13px;color:#333;overflow-wrap:anywhere;line-height:1.6}
-#auth-panel{border:1px solid #ccc;padding:16px 19px;border-radius:8px;margin:-7px 0 22px}
-#auth-panel input{display:block;width:min(100%,520px);min-height:43px;border:1px solid #bbb;padding:10px;margin:9px 0}
-[hidden]{display:none!important}.summary{padding:22px;background:#f5f5f5;border-radius:8px;display:flex;gap:18px;flex-wrap:wrap;margin:19px 0}
-.metric{flex:1;min-width:115px}.metric strong{display:block;font-size:27px;letter-spacing:-.05em}.metric span{font-size:11px;color:#555}
-.finding{padding:19px 0;border-bottom:1px solid #e8e8e8;min-width:0}
-.finding:last-child{border-bottom:0}.findinghead{display:flex;gap:14px;align-items:start;justify-content:space-between}
-.finding b{font-size:14px;letter-spacing:-.025em}.finding small{font-size:11px;font-weight:700;color:#525252}
-.diff{margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.diff>div{border:1px solid #e6e6e6;padding:12px;border-radius:6px;min-width:0;overflow-wrap:anywhere}
-.diff span{display:block;color:#595959;font-size:11px;margin-bottom:5px}.diff strong{font-size:14px}
-.explain{font-size:12px;color:#676767;margin-top:8px;line-height:1.6}
-.report{border:1px solid #ddd;border-radius:9px;padding:25px;margin-bottom:32px}
-.reportdesc{color:#555;font-size:13px;margin:8px 0 14px;line-height:1.6}
-details{border-top:1px solid #e8e8e8;padding:15px 0}
-summary{cursor:pointer;font-weight:700;font-size:13px}ul{padding-left:19px;font-size:12px}
-textarea{width:100%;min-height:83px;border:1px solid #bbb;border-radius:6px;padding:13px;margin:12px 0;resize:vertical;font-size:13px}
-select{width:100%;border:1px solid #bbb;padding:12px;border-radius:6px;font-size:13px}
-.steps{font-size:13px;color:#656565;margin-bottom:12px;line-height:1.65}
-.footer{margin-top:50px;padding:25px 0 36px;border-top:1px solid #e7e7e7;font-size:12px;color:#686868}
-@media(max-width:720px){.wrap{padding:0 16px}.nav{height:64px}.hero{padding:35px 0 26px}.fields{grid-template-columns:1fr;gap:12px}.panel,.report{padding:18px}.diff{grid-template-columns:1fr}.summary{gap:13px}.metric{min-width:95px}.controls .btn{width:100%}}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid #202020;outline-offset:3px}
+.wrap{max-width:1170px;padding:0 28px;margin:auto}
+header{border-bottom:1px solid #e5e5e5;min-height:72px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.brand{font-size:18px;font-weight:800;letter-spacing:-.055em}header small{color:#666;font-size:12px}
+.intro{padding:47px 0 30px;max-width:760px}.eyebrow{font-size:11px;letter-spacing:.07em;font-weight:700;color:#777;text-transform:uppercase}
+h1,h2,h3{margin:0;letter-spacing:-.045em;line-height:1.13}
+h1{font-size:clamp(35px,5vw,61px);margin:13px 0 16px}h2{font-size:24px}h3{font-size:18px}
+p{margin:10px 0 0}.intro p{max-width:660px;font-size:15px;color:#545454;line-height:1.7}
+.layout{display:grid;grid-template-columns:minmax(0,.94fr) minmax(0,1.06fr);gap:20px;align-items:start;padding-bottom:60px}
+.card{border:1px solid #dadada;background:#fff;border-radius:9px;padding:25px;min-width:0}
+.card-title{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:21px}
+.pill{border:1px solid #d8d8d8;border-radius:99px;padding:4px 9px;font-size:11px;color:#444;white-space:nowrap}
+.field{margin-bottom:17px}.field label{display:block;margin-bottom:6px;font-weight:700;font-size:12px;color:#454545}
+.field input,.field textarea,.field select{border:1px solid #cbcbcb;background:#fff;border-radius:5px;padding:11px 12px;color:#202020;min-height:45px;width:100%;font-size:14px}
+.field textarea{min-height:83px;resize:vertical}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:13px}.grid > *{min-width:0}
+.action{background:#202020;color:#fff;font-weight:700;border:1px solid #202020;border-radius:6px;padding:11px 18px;min-height:45px;font-size:13px}
+.action:hover{background:#444}.action:disabled{background:#bbb;border-color:#bbb;cursor:wait}
+.secondary{background:#fff;color:#202020;border:1px solid #aaa;border-radius:6px;padding:9px 13px;font-size:12px;font-weight:700}
+.secondary:hover{background:#f7f7f7}
+.hint{color:#626262;font-size:12px;line-height:1.6}.result{border-top:1px solid #e7e7e7;margin-top:22px;padding-top:18px}
+.result[hidden],.details[hidden],.auth-panel[hidden]{display:none}
+.tiny{font-size:11px;color:#777;line-height:1.6;overflow-wrap:anywhere}
+.result pre{white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.65 ui-monospace,SFMono-Regular,monospace;color:#383838;margin:9px 0}
+.line{border-bottom:1px solid #eee;padding:12px 0}
+.line:last-child{border-bottom:0}
+.line-button{display:block;width:100%;text-align:left;background:#fff;border:0;padding:12px 0;border-bottom:1px solid #eee}
+.line-button:hover{background:#fafafa}
+.line-button strong{display:block;font-size:14px;overflow-wrap:anywhere}
+.line-button span{font-size:12px;color:#666;overflow-wrap:anywhere}
+.text-row{display:grid;grid-template-columns:112px 1fr;gap:10px;padding:8px 0;font-size:13px;overflow-wrap:anywhere}
+.text-row b{color:#656565;font-weight:500}
+.empty{font-size:13px;color:#666;margin-top:14px}
+.auth-bar{margin-bottom:24px;padding:15px 18px;border:1px solid #dfdfdf;border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:14px}
+.auth-bar strong{font-size:13px}.auth-bar span{color:#5a5a5a;font-size:12px}
+.auth-panel{padding:13px 17px;border:1px solid #e0e0e0;border-radius:8px;margin-bottom:20px}
+.checkline{display:flex;gap:9px;align-items:flex-start;font-size:12px;line-height:1.5;margin:12px 0;color:#454545}.checkline input{flex:0 0 17px;width:17px;height:17px;margin:2px 0;accent-color:#202020}.kv[hidden]{display:none}#simulator-controls[hidden]{display:none!important}
+.auth-panel .field{margin-bottom:10px}
+.timeline{padding:0;margin:10px 0 0;list-style:none}
+.timeline li{padding:10px 0;border-bottom:1px solid #e8e8e8;font-size:12px;color:#454545;overflow-wrap:anywhere}
+.kv{margin-top:15px;padding-top:14px;border-top:1px solid #ddd}
+.err{color:#ad2b1a}.ok{color:#252525;font-weight:700}
+.foot{border-top:1px solid #e5e5e5;padding:22px 0 42px;color:#696969;font-size:12px;line-height:1.6}
+@media(max-width:860px){.layout{grid-template-columns:1fr}.intro{padding:38px 0 25px}}
+@media(max-width:580px){.wrap{padding:0 18px}header{min-height:62px}.intro h1{font-size:37px}.layout{gap:13px}.card{padding:19px}.grid{grid-template-columns:1fr;gap:0}.auth-bar{align-items:flex-start;flex-direction:column}.text-row{grid-template-columns:95px 1fr}}
+
+/* Source comparison reuses the approved staging design system without new branding. */
+.hero{padding:47px 0 30px;max-width:760px}
+.hero p{max-width:660px;font-size:15px;color:#545454;line-height:1.7;margin-top:10px}
+.kicker{font-size:11px;letter-spacing:.07em;font-weight:700;color:#777;text-transform:uppercase}
+.fields{display:grid;grid-template-columns:minmax(0,.94fr) minmax(0,1.06fr);gap:20px;align-items:start}
+.panel,.report{border:1px solid #dadada;background:#fff;border-radius:9px;padding:25px;min-width:0}
+.panel h2{font-size:24px}.panel p{margin:10px 0 20px;font-size:13px;line-height:1.65;color:#626262}
+.caption{display:block;margin:14px 0 7px;font-weight:700;font-size:12px;color:#454545}
+.fileinput{width:100%;border:1px solid #cbcbcb;background:#fff;border-radius:5px;padding:11px 12px;color:#202020;min-height:45px;font-size:13px}
+.samplehint{font-size:12px;color:#626262;line-height:1.6;margin:13px 0 17px}
+.controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:20px 0 30px}
+.status{font-size:12px;color:#626262;line-height:1.6;overflow-wrap:anywhere}
+.btn{background:#202020;color:#fff;font-weight:700;border:1px solid #202020;border-radius:6px;padding:11px 18px;min-height:45px;font-size:13px}
+.btn:hover{background:#444}.btn:disabled{opacity:.6;cursor:wait}
+.outline{background:#fff;color:#202020;border:1px solid #aaa}
+.outline:hover{background:#f7f7f7}
+.authbar{margin-bottom:24px;padding:15px 18px;border:1px solid #dfdfdf;border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:14px}
+.authbar span{font-size:13px;font-weight:700}
+#auth-panel{padding:13px 17px;border:1px solid #e0e0e0;border-radius:8px;margin-bottom:20px}
+#auth-panel input{display:block;min-height:45px;width:min(100%,520px);border:1px solid #cbcbcb;padding:11px;margin:9px 0;border-radius:5px;background:#fff;color:#202020}
+#auth-panel .btn{margin-top:7px}
+.panel[hidden],.report[hidden],#auth-panel[hidden]{display:none}
+details{border-top:1px solid #e8e8e8;padding:15px 0;margin-top:16px}
+summary{font-weight:700;font-size:13px;cursor:pointer}
+.steps{font-size:12px;color:#626262;line-height:1.6;margin:10px 0}
+h2{font-size:24px}h3{font-size:18px}
+.report{margin-bottom:32px}
+.reportdesc{font-size:13px;line-height:1.65;color:#545454;margin:10px 0 20px}
+.summary{display:flex;gap:16px;flex-wrap:wrap;border:1px solid #e5e5e5;background:#fff;border-radius:7px;padding:18px;margin:18px 0}
+.metric{flex:1;min-width:115px}
+.metric strong{display:block;color:#202020;font-size:24px;letter-spacing:-.045em}
+.metric span{font-size:11px;color:#626262}
+.finding{padding:17px 0;border-bottom:1px solid #e7e7e7;min-width:0}
+.finding:last-child{border-bottom:0}
+.findinghead{display:flex;gap:12px;align-items:start;justify-content:space-between}
+.finding b{font-size:14px}.finding small{font-size:11px;color:#626262;font-weight:700}
+.diff{margin-top:11px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.diff>div{min-width:0;border:1px solid #e5e5e5;padding:12px;border-radius:6px;overflow-wrap:anywhere}
+.diff span{display:block;color:#626262;font-size:11px;margin-bottom:5px}
+.diff strong{font-size:14px}
+.explain{font-size:12px;color:#626262;margin:8px 0 0;line-height:1.6}
+textarea{width:100%;min-height:83px;border:1px solid #cbcbcb;border-radius:5px;padding:11px 12px;margin:12px 0;resize:vertical;font-size:13px;background:#fff;color:#202020}
+select{width:100%;border:1px solid #cbcbcb;padding:11px 12px;border-radius:5px;font-size:13px;background:#fff;color:#202020}
+.footer{border-top:1px solid #e5e5e5;padding:22px 0 42px;margin-top:45px;color:#696969;font-size:12px;line-height:1.6}
+@media(max-width:860px){.fields{grid-template-columns:1fr}.hero{padding:38px 0 25px}}
+@media(max-width:580px){.wrap{padding:0 18px}.hero h1{font-size:37px}.panel,.report{padding:19px}.diff{grid-template-columns:1fr}.authbar{align-items:flex-start;flex-direction:column}.controls .btn{width:100%}}
 </style></head><body><div class="wrap">
-<header class="nav"><span class="brand">intake / integrity</span><a href="/">Enquiry test</a></header>
+<header><div class="brand">intake / integrity</div><small>Persistent PostgreSQL test</small></header>
 <main>
 <section class="hero"><span class="kicker">Staging · real PostgreSQL comparison</span>
-<h1>Find the conflicting records. <span style="color:#df552a">Not another dashboard.</span></h1>
+<h1>Compare customer records before they change.</h1>
 <p>For CRM/1C integrators: compare two source exports before changing a customer or counterparty. This read-only checkpoint exposes missing, ambiguous and conflicting records without selecting a winner or modifying either system.</p></section>
 <div class="authbar"><span id="connection">Connect your testing account</span><button class="btn outline" id="auth-toggle">Authentication</button></div>
 <div id="auth-panel" hidden><label class="caption" for="access-token">Staging access token</label><input id="access-token" type="password" autocomplete="off" placeholder="Paste your private staging token">
