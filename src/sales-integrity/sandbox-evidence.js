@@ -24,7 +24,7 @@ export class SandboxDecisionEvidence {
   return 'demo-v1.'+payload+'.'+mac;
  }
  inspect(token){
-  if(!validString(token)||token.length>2500) return null;
+  if(typeof token!=='string'||token.length<30||token.length>2500) return null;
   const parts=token.split('.');
   if(parts.length!==3||parts[0]!=='demo-v1')return null;
   const expected=createHmac('sha256',this.secret).update(parts[1]).digest('base64url');
