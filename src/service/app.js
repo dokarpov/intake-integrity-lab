@@ -74,7 +74,7 @@ export function createApiHandler({authenticator,runtimes,policies,rateLimiter,in
           }
           if(req.method==='POST'&&url.pathname==='/api/integrity/sources/snapshots'){
             requirePermission(principal,'integration.test');
-            const value=await readJson(req,64000);
+            const value=await readJson(req,{maxBytes:64000});
             return sendJson(res,201,await sourceComparisonStore.importSnapshot({...value,tenantId:principal.tenantId,actorRef:principal.id}),{requestId});
           }
           if(req.method==='POST'&&url.pathname==='/api/integrity/sources/compare'){
