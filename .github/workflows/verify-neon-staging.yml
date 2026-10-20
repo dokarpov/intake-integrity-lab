@@ -15,8 +15,13 @@ jobs:
           curl --fail-with-body --retry 3 --retry-delay 3 --connect-timeout 20 -sS "$URL/healthz" | tee /tmp/health.json
           curl --fail-with-body --retry 3 --retry-delay 3 --connect-timeout 20 -sS "$URL/readyz" | tee /tmp/ready.json
           curl --fail-with-body --retry 3 --retry-delay 3 --connect-timeout 20 -sS "$URL/" | grep -q 'Follow one enquiry from receipt'
-          # Verify deployment 4 serves the updated database-aware login page.
+          # Verify the current deployment serves the database-aware login page.
           curl --fail-with-body --connect-timeout 20 -sS "$URL/" | grep -q "api('/readyz')"
+          # New read-only source comparison page is served by the deployed Neon function.
+          curl --fail-with-body --connect-timeout 20 -sS "$URL/sources" | grep -q "Find the conflicting records"
+          curl --fail-with-body --connect-timeout 20 -sS "$URL/sources" | grep -q "Load two fictional exports and compare"
+          SOURCES_AUTH=$(curl -sS -o /tmp/sources-unauthorized.json -w '%{http_code}' "$URL/api/integrity/sources/latest")
+          test "$SOURCES_AUTH" = 401
           HTTP_CODE=$(curl -sS -o /tmp/unauthorized.json -w '%{http_code}' "$URL/api/me")
           test "$HTTP_CODE" = 401
           python3 - <<'PY'
