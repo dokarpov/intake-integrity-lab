@@ -93,7 +93,7 @@ export class PostgresSourceComparison {
  async transaction(work){
   const c=await this.pool.connect();
   try{
-   await c.query('BEGIN ISOLATION LEVEL REPEATABLE READ');
+   await c.query('BEGIN');
    await c.query("SET LOCAL lock_timeout='5s'");
    const output=await work(c);
    await c.query('COMMIT');return output;
