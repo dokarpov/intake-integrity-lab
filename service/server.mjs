@@ -11,6 +11,7 @@ import { AwsKmsHmacPseudonymizer } from '../src/compliance/pseudonymizer-kms.js'
 import { createApiHandler } from '../src/service/app.js';
 import { PostgresSalesIntegrity } from '../src/sales-integrity/postgres-integrity.js';
 import { SandboxDecisionEvidence } from '../src/sales-integrity/sandbox-evidence.js';
+import { SandboxCrmSimulator } from '../src/sales-integrity/sandbox-crm.js';
 import { HttpIdentityResolver } from '../src/integrations/identity/http-resolver.js';
 
 const here=dirname(fileURLToPath(import.meta.url)), root=resolve(here,'..');
@@ -53,10 +54,11 @@ if(sandboxEnabled&&!process.env.SANDBOX_EVIDENCE_HMAC_SECRET)throw new Error('sa
 const sandboxEvidenceProvider=sandboxEnabled?new SandboxDecisionEvidence({
   secret:process.env.SANDBOX_EVIDENCE_HMAC_SECRET,integrityStore,tenantId:'staging-demo'
 }):null;
+const sandboxCrmSimulator=sandboxEnabled?new SandboxCrmSimulator({pool,integrity:integrityStore,tenantId:'staging-demo'}):null;
 const api=createApiHandler({
   authenticator,runtimes,policies,rateLimiter:limiter,intakeConfig:config.intake||{},
   oneCConfig,identityResolver,integrityStore,
-  integrityEvidenceVerifier:sandboxEvidenceProvider,sandboxEvidenceProvider
+  integrityEvidenceVerifier:sandboxEvidenceProvider,sandboxEvidenceProvider,sandboxCrmSimulator
 });
 const consoleHtml=readFileSync(resolve(root,'demo/index.html'),'utf8');
 const integrityTestHtml=integrityEnabled?readFileSync(resolve(root,'demo/integrity.html'),'utf8'):null;
