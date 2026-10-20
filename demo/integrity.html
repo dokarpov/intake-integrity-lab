@@ -114,7 +114,7 @@ p{margin:10px 0 0}.intro p{max-width:660px;font-size:15px;color:#545454;line-hei
 'use strict';
 const $=id=>document.getElementById(id);
 const local=['localhost','127.0.0.1'].includes(location.hostname);
-const state={token:sessionStorage.getItem('intake-staging-access')||'',selected:null,connected:false,candidates:[],decisionKey:null};
+const state={token:sessionStorage.getItem('intake-staging-access')||'',selected:null,connected:false,candidates:[],pendingDecision:null};
 const text=(id,value)=>{$(id).textContent=String(value??'')};
 const make=(tag,content,cls='')=>{const n=document.createElement(tag);n.textContent=String(content??'');if(cls)n.className=cls;return n};
 function row(k,v){const d=make('div','','text-row');d.append(make('b',k),make('span',v));return d}
@@ -222,23 +222,28 @@ $('submit-decision').addEventListener('click',async()=>{
  }
  btn.disabled=true;btn.textContent='Recording…';
  try{
-  const issued=await api('/api/integrity/sandbox/evidence',{
+  const fingerprint=JSON.stringify({intakeId,action,personId,reason});
+  if(!state.pendingDecision||state.pendingDecision.fingerprint!==fingerprint){
+   const issued=await api('/api/integrity/sandbox/evidence',{
+    method:'POST',body:JSON.stringify({
+     intakeId,action,personId,simulateEvidence:true,
+     simulateConsent:action==='discard'?false:true
+    })
+   });
+   state.pendingDecision={fingerprint,issued,key:crypto.randomUUID()};
+  }
+  const pending=state.pendingDecision;
+  await api('/api/integrity/intakes/'+encodeURIComponent(intakeId)+'/decisions',{
    method:'POST',body:JSON.stringify({
-    intakeId,action,personId,simulateEvidence:true,
-    simulateConsent:action==='discard'?false:true
-   })
-  });
-  if(!state.decisionKey)state.decisionKey=crypto.randomUUID();
-  const result=await api('/api/integrity/intakes/'+encodeURIComponent(intakeId)+'/decisions',{
-   method:'POST',body:JSON.stringify({
-    requestKey:state.decisionKey,action,personId,reason,
-    identityEvidenceRef:issued.identityEvidenceRef,
-    consentEvidenceRef:issued.consentEvidenceRef,
+    requestKey:pending.key,action,personId,reason,
+    identityEvidenceRef:pending.issued.identityEvidenceRef,
+    consentEvidenceRef:pending.issued.consentEvidenceRef,
     policyVersion:'fictional-sandbox-v1',destination:'crm-simulator'
    })
   });
+  state.pendingDecision=null;
   text('decision-message','Decision saved. The CRM outbox entry is in PostgreSQL.');
-  state.decisionKey=null;await refresh();await inspect(intakeId);
+  await refresh();await inspect(intakeId);
  }catch(e){text('decision-message',e.message)}
  finally{btn.disabled=false;btn.textContent='Record my decision in PostgreSQL'}
 });
