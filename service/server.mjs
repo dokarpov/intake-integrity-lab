@@ -9,6 +9,7 @@ import { ServicePolicyRegistry } from '../src/service/policies.js';
 import { TenantRuntimeRegistry } from '../src/service/runtime.js';
 import { AwsKmsHmacPseudonymizer } from '../src/compliance/pseudonymizer-kms.js';
 import { createApiHandler } from '../src/service/app.js';
+import { PostgresSalesIntegrity } from '../src/sales-integrity/postgres-integrity.js';
 import { HttpIdentityResolver } from '../src/integrations/identity/http-resolver.js';
 
 const here=dirname(fileURLToPath(import.meta.url)), root=resolve(here,'..');
@@ -36,7 +37,17 @@ const runtimes=new TenantRuntimeRegistry({mode,pool,strictLedger:true,subjectRef
 const policies=new ServicePolicyRegistry(config.policies);const limiter=new SlidingWindowRateLimiter({limit:Number(process.env.RATE_LIMIT_PER_MINUTE||120)});
 const oneCConfig=process.env.ONE_C_CONFIG_FILE?loadJson(process.env.ONE_C_CONFIG_FILE):null;
 const identityResolver=process.env.IDENTITY_RESOLVER_CONFIG_FILE?new HttpIdentityResolver(loadJson(process.env.IDENTITY_RESOLVER_CONFIG_FILE)):null;
-const api=createApiHandler({authenticator,runtimes,policies,rateLimiter:limiter,intakeConfig:config.intake||{},oneCConfig,identityResolver});
+// New transactional intake backend is intentionally disabled by default.
+// A real external evidence verifier must be installed before decision routes
+// can execute. This bootstrap does not claim verified approvals from raw JSON.
+const integrityEnabled=process.env.INTEGRITY_PG_V2_ENABLED==='true';
+if(integrityEnabled&&(!pool||!process.env.INTEGRITY_FINGERPRINT_HMAC_SECRET)){
+  throw new Error('INTEGRITY_PG_V2_REQUIRES_DATABASE_AND_HMAC_SECRET');
+}
+const integrityStore=integrityEnabled?new PostgresSalesIntegrity({
+  pool,fingerprintSecret:process.env.INTEGRITY_FINGERPRINT_HMAC_SECRET
+}):null;
+const api=createApiHandler({authenticator,runtimes,policies,rateLimiter:limiter,intakeConfig:config.intake||{},oneCConfig,identityResolver,integrityStore});
 const consoleHtml=readFileSync(resolve(root,'demo/index.html'),'utf8');
 const server=createServer(async(req,res)=>{
   if(req.method==='GET'&&(req.url==='/'||req.url==='/console')){res.writeHead(200,{'content-type':'text/html; charset=utf-8','cache-control':'no-store','content-security-policy':"default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",'x-frame-options':'DENY','x-content-type-options':'nosniff','referrer-policy':'no-referrer'});return res.end(consoleHtml)}
