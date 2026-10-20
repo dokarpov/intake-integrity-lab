@@ -33,10 +33,8 @@ try{
    await page.reload();
    await page.getByText('Connected to API').waitFor({timeout:12000});
    await page.locator('#record-list .line-button').filter({hasText:'Sam Lee'}).first().click();
-   const persisted=await page.locator('#detail-fields').innerText();
-   if(!persisted.includes(sourceKey))throw new Error('Postgres record not recovered after reload');
-   if(!((await page.locator('#delivery-state').innerText()).includes('No CRM delivery authorized')))
-     throw new Error('Unauthorized delivery was queued');
+   await page.locator('#detail-fields').getByText(sourceKey).waitFor({timeout:12000});
+   await page.locator('#delivery-state').getByText('No CRM delivery authorized or queued.').waitFor({timeout:12000});
    if(errors.length)throw new Error('Browser errors: '+errors.join(' | '));
    console.log('PASS real PostgreSQL browser intake at '+vp.width+'px');
    await context.close();
