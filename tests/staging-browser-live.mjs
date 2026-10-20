@@ -42,10 +42,15 @@ try{
    await page.locator('#detail-fields').getByText('link_existing').waitFor({timeout:12000});
    await page.locator('#delivery-state').getByText(/pending/).waitFor({timeout:12000});
    await page.locator('#audit-list').getByText(/intake.decision_recorded/).waitFor({timeout:12000});
+   await page.getByRole('button',{name:'Simulate lost acknowledgement'}).click();
+   await page.locator('#delivery-state').getByText(/needs_reconciliation/).waitFor({timeout:12000});
+   await page.getByRole('button',{name:'Reconcile with provider'}).click();
+   await page.locator('#delivery-state').getByText(/succeeded/).waitFor({timeout:12000});
    await page.reload();
    await page.getByText('Connected to API').waitFor({timeout:12000});
    await page.locator('#record-list .line-button').filter({hasText:'Sam Lee'}).first().click();
    await page.locator('#detail-fields').getByText('link_existing').waitFor({timeout:12000});
+   await page.locator('#delivery-state').getByText(/succeeded/).waitFor({timeout:12000});
    if(errors.length)throw new Error('Browser errors: '+errors.join(' | '));
    console.log('PASS real PostgreSQL browser intake at '+vp.width+'px');
    await context.close();
