@@ -8,18 +8,25 @@ jobs:
   smoke:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - name: Check deployed staging HTTP and PostgreSQL readiness
         env:
           URL: https://br-shiny-union-bajmnaa3-intakestaging.compute.c-8.eu-central-1.aws.neon.tech
         run: |
           curl --fail-with-body --retry 3 --retry-delay 3 --connect-timeout 20 -sS "$URL/healthz" | tee /tmp/health.json
           curl --fail-with-body --retry 3 --retry-delay 3 --connect-timeout 20 -sS "$URL/readyz" | tee /tmp/ready.json
-          curl --fail-with-body --retry 3 --retry-delay 3 --connect-timeout 20 -sS "$URL/" | grep -q 'Follow one enquiry from receipt'
+          curl --fail-with-body --retry 3 --retry-delay 3 --connect-timeout 20 -sS "$URL/" -o /tmp/deployed-intake.html
+          cmp -s demo/integrity.html /tmp/deployed-intake.html
+          echo "APPROVED MAIN VISUAL DEPLOYED EXACTLY"
+          grep -q 'Follow one enquiry from receipt' /tmp/deployed-intake.html
           # Verify the current deployment serves the database-aware login page.
           curl --fail-with-body --connect-timeout 20 -sS "$URL/" | grep -q "api('/readyz')"
           # New read-only source comparison page is served by the deployed Neon function.
-          curl --fail-with-body --connect-timeout 20 -sS "$URL/sources" | grep -q "Find the conflicting records"
-          curl --fail-with-body --connect-timeout 20 -sS "$URL/sources" | grep -q "Load two fictional exports and compare"
+          curl --fail-with-body --connect-timeout 20 -sS "$URL/sources" -o /tmp/deployed-source.html
+          cmp -s demo/source-comparison.html /tmp/deployed-source.html
+          echo "APPROVED SOURCE VISUAL DEPLOYED EXACTLY"
+          grep -q "Compare customer records before they change" /tmp/deployed-source.html
+          grep -q "Load two fictional exports and compare" /tmp/deployed-source.html
           SOURCES_AUTH=$(curl -sS -o /tmp/sources-unauthorized.json -w '%{http_code}' "$URL/api/integrity/sources/latest")
           test "$SOURCES_AUTH" = 401
           HTTP_CODE=$(curl -sS -o /tmp/unauthorized.json -w '%{http_code}' "$URL/api/me")
