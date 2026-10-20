@@ -1,0 +1,214 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#ffffff"><title>Intake Integrity | Source comparison</title>
+<style>
+:root{font-family:"DM Sans",Arial,sans-serif;color:#191919;background:#fff;line-height:1.5}
+*,*:before,*:after{box-sizing:border-box}html,body{margin:0;background:#fff;min-width:320px}
+button,input,textarea,select{font:inherit}button{cursor:pointer}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid #1b1b1b;outline-offset:3px}
+.wrap{max-width:1180px;padding:0 28px;margin:0 auto}.nav{height:70px;display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:1px solid #ececec}
+.brand{font-weight:800;letter-spacing:-.06em;font-size:19px}.nav a{color:#303030;font-size:12px;font-weight:700}
+.hero{padding:49px 0 34px;max-width:830px}.kicker{text-transform:uppercase;font-size:11px;font-weight:800;letter-spacing:.08em;color:#575757}
+h1,h2,h3,p{margin:0}h1,h2,h3{line-height:1.12;letter-spacing:-.055em}
+h1{font-size:clamp(39px,5.8vw,73px);margin:15px 0 20px;font-weight:700}h2{font-size:23px;margin:0 0 6px}h3{font-size:18px}
+.hero p{font-size:16px;color:#4b4b4b;line-height:1.7;max-width:690px}
+.authbar{border:1px solid #d7d7d7;border-radius:9px;display:flex;justify-content:space-between;align-items:center;gap:15px;padding:14px 19px;margin-bottom:23px;flex-wrap:wrap}
+.authbar span{font-size:13px;font-weight:700}.btn{border-radius:6px;background:#222;border:1px solid #222;padding:11px 17px;color:#fff;font-weight:750;min-height:45px;font-size:13px}
+.btn:hover{background:#444}.btn:disabled{opacity:.5;cursor:wait}
+.outline{background:#fff;color:#222;border:1px solid #a7a7a7}.outline:hover{background:#f6f6f6}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:17px}
+.panel{border:1px solid #dcdcdc;border-radius:10px;padding:23px;min-width:0}
+.panel p{font-size:13px;color:#535353;line-height:1.62;margin-bottom:20px}
+.caption{font-weight:700;font-size:12px;color:#3d3d3d;display:block;margin:11px 0 6px}
+.fileinput{width:100%;font-size:13px;border:1px dashed #aaa;border-radius:6px;padding:13px}
+.samplehint{font-size:12px;color:#676767;line-height:1.6;margin:13px 0}
+.controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:19px 0 34px}
+.status{font-size:13px;color:#333;overflow-wrap:anywhere;line-height:1.6}
+#auth-panel{border:1px solid #ccc;padding:16px 19px;border-radius:8px;margin:-7px 0 22px}
+#auth-panel input{display:block;width:min(100%,520px);min-height:43px;border:1px solid #bbb;padding:10px;margin:9px 0}
+[hidden]{display:none!important}.summary{padding:22px;background:#f5f5f5;border-radius:8px;display:flex;gap:18px;flex-wrap:wrap;margin:19px 0}
+.metric{flex:1;min-width:115px}.metric strong{display:block;font-size:27px;letter-spacing:-.05em}.metric span{font-size:11px;color:#555}
+.finding{padding:19px 0;border-bottom:1px solid #e8e8e8;min-width:0}
+.finding:last-child{border-bottom:0}.findinghead{display:flex;gap:14px;align-items:start;justify-content:space-between}
+.finding b{font-size:14px;letter-spacing:-.025em}.finding small{font-size:11px;font-weight:700;color:#525252}
+.diff{margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.diff>div{border:1px solid #e6e6e6;padding:12px;border-radius:6px;min-width:0;overflow-wrap:anywhere}
+.diff span{display:block;color:#595959;font-size:11px;margin-bottom:5px}.diff strong{font-size:14px}
+.explain{font-size:12px;color:#676767;margin-top:8px;line-height:1.6}
+.report{border:1px solid #ddd;border-radius:9px;padding:25px;margin-bottom:32px}
+.reportdesc{color:#555;font-size:13px;margin:8px 0 14px;line-height:1.6}
+details{border-top:1px solid #e8e8e8;padding:15px 0}
+summary{cursor:pointer;font-weight:700;font-size:13px}ul{padding-left:19px;font-size:12px}
+textarea{width:100%;min-height:83px;border:1px solid #bbb;border-radius:6px;padding:13px;margin:12px 0;resize:vertical;font-size:13px}
+select{width:100%;border:1px solid #bbb;padding:12px;border-radius:6px;font-size:13px}
+.steps{font-size:13px;color:#656565;margin-bottom:12px;line-height:1.65}
+.footer{margin-top:50px;padding:25px 0 36px;border-top:1px solid #e7e7e7;font-size:12px;color:#686868}
+@media(max-width:720px){.wrap{padding:0 16px}.nav{height:64px}.hero{padding:35px 0 26px}.fields{grid-template-columns:1fr;gap:12px}.panel,.report{padding:18px}.diff{grid-template-columns:1fr}.summary{gap:13px}.metric{min-width:95px}.controls .btn{width:100%}}
+</style></head><body><div class="wrap">
+<header class="nav"><span class="brand">intake / integrity</span><a href="/">Enquiry test</a></header>
+<main>
+<section class="hero"><span class="kicker">Staging · real PostgreSQL comparison</span>
+<h1>Find the conflicting records. <span style="color:#df552a">Not another dashboard.</span></h1>
+<p>For CRM/1C integrators: compare two source exports before changing a customer or counterparty. This read-only checkpoint exposes missing, ambiguous and conflicting records without selecting a winner or modifying either system.</p></section>
+<div class="authbar"><span id="connection">Connect your testing account</span><button class="btn outline" id="auth-toggle">Authentication</button></div>
+<div id="auth-panel" hidden><label class="caption" for="access-token">Staging access token</label><input id="access-token" type="password" autocomplete="off" placeholder="Paste your private staging token">
+<button class="btn" id="auth-connect">Connect</button></div>
+<div class="controls"><button class="btn" id="load-example">Load two fictional exports and compare</button><span class="status" id="loading-status">Or import CSV exports below (fictional/anonymized data only).</span></div>
+<section class="fields" aria-label="Source imports">
+<article class="panel"><h2>1C source</h2><p>Counterparties and associated contacts. Use a shared cross-system key where mapping is known.</p>
+<label for="one-file" class="caption">1C CSV file</label><input class="fileinput" id="one-file" type="file" accept=".csv,text/csv,text/plain">
+<div class="samplehint" id="one-preview">No file selected.</div>
+<button class="btn outline" type="button" id="one-upload">Import 1C snapshot</button></article>
+<article class="panel"><h2>Bitrix24 source</h2><p>Contacts, companies, ownership and the current system-native status. Statuses are not translated automatically.</p>
+<label for="bitrix-file" class="caption">Bitrix24 CSV file</label><input class="fileinput" id="bitrix-file" type="file" accept=".csv,text/csv,text/plain">
+<div class="samplehint" id="bitrix-preview">No file selected.</div>
+<button class="btn outline" type="button" id="bitrix-upload">Import Bitrix24 snapshot</button></article>
+</section>
+<details><summary>CSV columns and mapping assumptions</summary><p class="steps">Header names: <code>sourceRecordId, sharedKey, company, counterpartyType, contactRef, ownerRef, originalStatus</code>. Russian aliases supported for common columns: ИД, ВнешнийКод, Контрагент, ТипКонтрагента, Контакт, Ответственный, Статус. The <b>sharedKey must be explicitly mapped across systems</b>; a matching name is not identity proof. Unsupported exports need mapping, not guessing. Import limited to 100 fictional/anonymized rows per source.</p></details>
+<div class="controls"><button class="btn" id="compare">Compare latest imported snapshots</button><button class="btn outline" id="reload">Reload last comparison</button><span id="compare-status" class="status" role="status"></span></div>
+<section id="report" class="report" hidden>
+<div class="kicker">Evidence comparison · no writes to either source</div><h2 id="report-title">Comparison</h2><p class="reportdesc" id="report-desc"></p><div class="summary" id="summary"></div>
+<div id="findings"></div>
+<details id="review-area"><summary>Your assessment — no automatic business decision</summary>
+<label class="caption" for="assessment">How would you handle these discrepancies?</label><select id="assessment">
+<option value="requires_verification">Request evidence / clarification</option>
+<option value="investigate_mapping">Investigate source mapping</option>
+<option value="acceptable_difference">Document acceptable differences</option></select>
+<label class="caption" for="reason">Why?</label><textarea id="reason" placeholder="What information is missing or why is this difference acceptable?"></textarea>
+<button class="btn" type="button" id="save-assessment">Record assessment</button>
+<p class="status" id="assessment-status" role="status"></p><div id="past-assessments"></div>
+</details>
+</section>
+</main><footer class="footer">Read-only, fictional-data staging. No live 1C or Bitrix24 API connection, source writeback, customer identity verification or inferred production status. PostgreSQL stores imported snapshots and decisions.</footer>
+</div>
+<script>
+(()=>{'use strict';
+const $=id=>document.getElementById(id);
+const tokenKey='intake-staging-access';
+let token=sessionStorage.getItem(tokenKey)||'',latestReport=null,files={};
+const schema=['sourceRecordId','sharedKey','company','counterpartyType','contactRef','ownerRef','originalStatus'];
+const aliases={sourceRecordId:['sourcerecordid','id','ид','код'],sharedKey:['sharedkey','externalkey','внешнийкод','внешнийид'],company:['company','контрагент','название','компания'],counterpartyType:['counterpartytype','типконтрагента','тип'],contactRef:['contactref','контакт','контактid'],ownerRef:['ownerref','ответственный','владелец'],originalStatus:['originalstatus','статус','status']};
+const normalize=s=>String(s||'').toLowerCase().replace(/[ _-]/g,'').trim();
+const make=(tag,text,cls='')=>{const el=document.createElement(tag);el.textContent=String(text??'');if(cls)el.className=cls;return el};
+async function api(path,options={}){
+ const headers={'content-type':'application/json',...options.headers};
+ if(token)headers.authorization='Bearer '+token;
+ const r=await fetch(path,{...options,headers,cache:'no-store'});
+ const v=await r.json().catch(()=>({}));
+ if(!r.ok)throw Error(v.error?.code||v.error?.message||'Request failed: HTTP '+r.status);
+ return v;
+}
+async function connect(){
+ try{const me=await api('/api/me');$('connection').textContent='Connected: '+me.name+' · '+me.tenantId;$('auth-panel').hidden=true}
+ catch(e){$('connection').textContent='Authentication required';$('auth-panel').hidden=false}
+}
+function parseCsv(text){
+ const rows=[],line=[];let str='',quoted=false;
+ for(let i=0;i<text.length;i++){
+  const ch=text[i];
+  if(ch==='"'){if(quoted&&text[i+1]==='"'){str+='"';i++}else quoted=!quoted}
+  else if(ch===','&&!quoted){line.push(str);str=''}
+  else if((ch==='\n'||ch==='\r')&&!quoted){
+   if(ch==='\r'&&text[i+1]==='\n')i++;
+   line.push(str);str='';
+   if(line.some(x=>x.trim()))rows.push(line.slice());line.length=0;
+  }else str+=ch;
+ }
+ if(quoted)throw Error('Unclosed CSV quote');
+ line.push(str);if(line.some(x=>x.trim()))rows.push(line);
+ if(rows.length<2)throw Error('CSV must contain a header and at least one record');
+ const headers=rows.shift().map(normalize);
+ const mapped=Object.fromEntries(schema.map(field=>[field,headers.findIndex(h=>aliases[field].includes(h))]));
+ if(mapped.sourceRecordId<0||mapped.company<0)throw Error('CSV requires sourceRecordId and company columns');
+ return rows.map((values,index)=>{
+  if(values.length!==headers.length)throw Error('Row '+(index+2)+' has a different number of columns');
+  return Object.fromEntries(schema.map(field=>[field,mapped[field]<0?null:(values[mapped[field]].trim()||null)]));
+ });
+}
+async function upload(source,rows,importKey){
+ const r=await api('/api/integrity/sources/snapshots',{method:'POST',body:JSON.stringify({source,importKey,rows})});
+ return r;
+}
+const samples={
+ '1c':[
+ {sourceRecordId:'1C-100',sharedKey:'account-north',company:'Studio North',counterpartyType:'OOO',contactRef:'person-19',ownerRef:'Mia',originalStatus:'Active'},
+ {sourceRecordId:'1C-200',sharedKey:'account-east',company:'Studio East',counterpartyType:'OOO',contactRef:'person-44',ownerRef:'Luca',originalStatus:'Active'},
+ {sourceRecordId:'1C-300',sharedKey:'account-orphan',company:'Old Pine',counterpartyType:'IP',contactRef:'person-70',ownerRef:'Roman',originalStatus:'Active'},
+ {sourceRecordId:'1C-400',sharedKey:null,company:'Unlinked Paper',counterpartyType:'OOO',contactRef:'person-88',ownerRef:'Team',originalStatus:'Active'}],
+ 'bitrix24':[
+ {sourceRecordId:'B-900',sharedKey:'account-north',company:'Studio North',counterpartyType:'IP',contactRef:'person-19',ownerRef:'Mia',originalStatus:'In progress'},
+ {sourceRecordId:'B-901',sharedKey:'account-east',company:'Studio East',counterpartyType:'OOO',contactRef:'person-44',ownerRef:'Luca',originalStatus:'Won'},
+ {sourceRecordId:'B-902',sharedKey:'account-new',company:'New Shop',counterpartyType:'OOO',contactRef:'person-64',ownerRef:'Anna',originalStatus:'New'},
+ {sourceRecordId:'B-903',sharedKey:'account-east',company:'Studio East',counterpartyType:'OOO',contactRef:'person-44',ownerRef:'Luca',originalStatus:'Won'}]
+};
+const labels={field_difference:'Different values',field_not_comparable:'Missing field evidence',ambiguous_shared_key:'Ambiguous mapping',missing_in_1c:'Absent in 1C',missing_in_bitrix24:'Absent in Bitrix24',unmapped_source_record:'No verified cross-system key'};
+function result(report){
+ latestReport=report;$('report').hidden=false;$('report-title').textContent='What differs between these sources?';
+ $('report-desc').textContent='Compared using explicit shared keys. Unmatched names are not merged. Each finding is evidence, not a business decision.';
+ const count=report.counts||{};
+ const metrics=[['Compared pairs',count.comparedPairs],['Field differences',count.fieldDifferences],['Ambiguous keys',count.ambiguousKeys],['Unpaired records',count.unpairedRecords],['Unmapped records',count.unmappedRecords]];
+ $('summary').replaceChildren(...metrics.map(([k,v])=>{const el=make('div','','metric');el.append(make('strong',v),make('span',k));return el}));
+ const target=$('findings');target.replaceChildren();
+ if(!report.observations?.length)target.append(make('p','No differences in this limited policy scope. This does not authorize a CRM write.','steps'));
+ for(const f of report.observations||[]){
+  const el=make('article','','finding'),head=make('div','','findinghead');
+  head.append(make('b',labels[f.code]||f.code),make('small',f.sharedKey||'No mapping key'));el.append(head);
+  if(f.field)el.append(make('p','Field: '+f.field,'explain'));
+  if(f.value1c!==null||f.valueBitrix24!==null){
+   const pair=make('div','','diff');
+   for(const [label,value] of [['1C',f.value1c],['Bitrix24',f.valueBitrix24]]){
+    const side=make('div');side.append(make('span',label),make('strong',Array.isArray(value)?value.join(', '):(value??'Not provided')));pair.append(side)
+   }el.append(pair);
+  }else el.append(make('p','1C: '+(f.sourceRecord1c||'—')+' · Bitrix24: '+(f.sourceRecordBitrix24||'—'),'explain'));
+  target.append(el);
+ }
+ $('report').scrollIntoView({behavior:'smooth',block:'start'});
+ loadAssessments().catch(()=>{});
+}
+async function compare(){const v=await api('/api/integrity/sources/compare',{method:'POST',body:'{}'});result(v);return v}
+async function loadAssessments(){
+ if(!latestReport)return;
+ const a=await api('/api/integrity/sources/assessments?comparisonId='+encodeURIComponent(latestReport.comparisonId));
+ const list=$('past-assessments');list.replaceChildren();
+ for(const x of a.items){const el=make('p',x.assessment+' · '+x.reason,'steps');list.append(el)}
+}
+async function safe(button,fn){
+ button.disabled=true;try{await fn()}catch(e){$('compare-status').textContent=e.message}
+ finally{button.disabled=false}
+}
+$('load-example').addEventListener('click',()=>safe($('load-example'),async()=>{
+ $('compare-status').textContent='Importing two fictional exports into PostgreSQL…';
+ const key=crypto.randomUUID();
+ await upload('1c',samples['1c'],'example-1c-'+key);
+ await upload('bitrix24',samples['bitrix24'],'example-bitrix-'+key);
+ const report=await compare();
+ $('compare-status').textContent='Imported two snapshots and saved '+report.observations.length+' observations.';
+}));
+for(const [source,prefix] of [['1c','one'],['bitrix24','bitrix']]){
+ $(prefix+'-file').addEventListener('change',async()=>{
+  const file=$(prefix+'-file').files[0];if(!file)return;
+  try{files[source]=parseCsv(await file.text());$(prefix+'-preview').textContent=files[source].length+' rows ready for import.'}
+  catch(e){files[source]=null;$(prefix+'-preview').textContent=e.message}
+ });
+ $(prefix+'-upload').addEventListener('click',()=>safe($(prefix+'-upload'),async()=>{
+  if(!files[source])throw Error('Choose a valid CSV file first.');
+  const value=await upload(source,files[source],source+'-csv-'+crypto.randomUUID());
+  $(prefix+'-preview').textContent=value.recordCount+' records saved to PostgreSQL.';
+ }));
+}
+$('compare').addEventListener('click',()=>safe($('compare'),compare));
+$('reload').addEventListener('click',()=>safe($('reload'),async()=>{const v=await api('/api/integrity/sources/comparison/latest');if(!v.comparisonId)throw Error('No comparison saved yet.');result(v)}));
+$('save-assessment').addEventListener('click',()=>safe($('save-assessment'),async()=>{
+ if(!latestReport)throw Error('Run a comparison first.');
+ const reason=$('reason').value.trim();if(reason.length<10)throw Error('Enter a specific reason (at least 10 characters).');
+ await api('/api/integrity/sources/assessments',{method:'POST',body:JSON.stringify({
+  comparisonId:latestReport.comparisonId,assessmentKey:crypto.randomUUID(),
+  assessment:$('assessment').value,reason
+ })});
+ $('assessment-status').textContent='Assessment saved in PostgreSQL. No source data changed.';
+ $('reason').value='';await loadAssessments();
+}));
+$('auth-toggle').addEventListener('click',()=>{$('auth-panel').hidden=!$('auth-panel').hidden});
+$('auth-connect').addEventListener('click',()=>{token=$('access-token').value.trim();sessionStorage.setItem(tokenKey,token);$('access-token').value='';connect()});
+connect().then(async()=>{try{const v=await api('/api/integrity/sources/comparison/latest');if(v?.comparisonId)result(v)}catch{}});
+})();
+</script></body></html>
