@@ -1,0 +1,25 @@
+name: build-neon-function-artifact
+on:
+  push:
+    branches: [testing/postgres-integrity-2026-10-20]
+    paths:
+      - 'functions/intake-staging.mjs'
+      - 'demo/integrity.html'
+      - 'src/sales-integrity/**'
+      - '.github/workflows/neon-function-bundle.yml'
+  workflow_dispatch:
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-save --ignore-scripts esbuild pg@8
+      - name: Bundle isolated Neon Function
+        run: |
+          ./node_modules/.bin/esbuild functions/intake-staging.mjs --bundle --platform=node --target=node24 --format=esm --loader:.html=text --banner:js="import{createRequire as ___cr}from'module';import{fileURLToPath as ___f}from'url';import{dirname as ___d}from'path';const require=___cr(import.meta.url);const __filename=___f(import.meta.url);const __dirname=___d(__filename);" --outfile=/tmp/index.mjs
+          cd /tmp && zip -q function.zip index.mjs
+          node -e "const fs=require('fs');let s=fs.readFileSync('/tmp/function.zip').toString('base64');let cs=s.match(/.{1,12000}/g)||[];console.log('ZIP_BEGIN '+cs.length);cs.forEach((v,i)=>console.log('ZIP_CHUNK '+i+' '+v));console.log('ZIP_END');"
