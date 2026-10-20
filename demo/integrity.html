@@ -41,7 +41,7 @@ p{margin:10px 0 0}.intro p{max-width:660px;font-size:15px;color:#545454;line-hei
 .auth-bar{margin-bottom:24px;padding:15px 18px;border:1px solid #dfdfdf;border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:14px}
 .auth-bar strong{font-size:13px}.auth-bar span{color:#5a5a5a;font-size:12px}
 .auth-panel{padding:13px 17px;border:1px solid #e0e0e0;border-radius:8px;margin-bottom:20px}
-.checkline{display:flex;gap:9px;align-items:flex-start;font-size:12px;line-height:1.5;margin:12px 0;color:#454545}.checkline input{flex:0 0 17px;width:17px;height:17px;margin:2px 0;accent-color:#202020}.kv[hidden]{display:none}
+.checkline{display:flex;gap:9px;align-items:flex-start;font-size:12px;line-height:1.5;margin:12px 0;color:#454545}.checkline input{flex:0 0 17px;width:17px;height:17px;margin:2px 0;accent-color:#202020}.kv[hidden]{display:none}#simulator-controls[hidden]{display:none!important}
 .auth-panel .field{margin-bottom:10px}
 .timeline{padding:0;margin:10px 0 0;list-style:none}
 .timeline li{padding:10px 0;border-bottom:1px solid #e8e8e8;font-size:12px;color:#454545;overflow-wrap:anywhere}
@@ -87,6 +87,12 @@ p{margin:10px 0 0}.intro p{max-width:660px;font-size:15px;color:#545454;line-hei
 <div class="kv"><h3>Possible people</h3><div id="candidates"></div><p class="hint">Matching email is only a possible identity. No record is merged automatically.</p></div>
 <div class="kv"><h3>Decision history</h3><ul id="audit-list" class="timeline"></ul></div>
 <div class="kv"><h3>CRM delivery</h3><div id="delivery-state"></div>
+<div id="simulator-controls" hidden style="margin-top:14px;display:flex;flex-wrap:wrap;gap:9px">
+<button id="crm-run" class="secondary" type="button">Run CRM simulator</button>
+<button id="crm-lost" class="secondary" type="button">Simulate lost acknowledgement</button>
+<button id="crm-reconcile" class="secondary" type="button">Reconcile with provider</button>
+</div>
+<p class="hint" id="simulator-message" role="status"></p>
 <p class="hint">Writes are queued only after a separately verified authorized decision. Uncertain outcomes require reconciliation.</p></div>
 </section>
 <div class="kv" id="decision-panel" hidden>
@@ -185,7 +191,14 @@ async function inspect(intakeId){
    const q=$('delivery-state');
    if(!deliveries.items.length)q.append(make('p','No CRM delivery authorized or queued.','empty'));
    for(const item of deliveries.items)q.append(row(item.destination,item.state+' · '+item.attempts+' attempts'));
-  }catch(e){$('delivery-state').append(make('p',e.message,'err'))}
+   const demo=deliveries.items.find(x=>x.destination==='crm-simulator');
+   $('simulator-controls').hidden=!demo;
+   $('crm-reconcile').hidden=!demo||demo.state!=='needs_reconciliation';
+   $('crm-run').hidden=!demo||!['pending','retry'].includes(demo.state);
+   $('crm-lost').hidden=!demo||!['pending','retry'].includes(demo.state);
+   $('simulator-controls').dataset.outbox=demo?.outbox_id||'';
+
+  }catch(e){$('simulator-controls').hidden=true;$('delivery-state').append(make('p',e.message,'err'))}
  }catch(e){text('detail-title',e.message)}
 }
 function updateDecisionForm(){
@@ -229,6 +242,27 @@ $('submit-decision').addEventListener('click',async()=>{
  }catch(e){text('decision-message',e.message)}
  finally{btn.disabled=false;btn.textContent='Record my decision in PostgreSQL'}
 });
+
+async function demoProvider(action){
+ const button=$('crm-'+action);
+ if(!state.selected)return;
+ button.disabled=true;
+ try{
+  const endpoint=action==='reconcile'?'reconcile':'run';
+  const payload=action==='reconcile'
+    ?{outboxId:$('simulator-controls').dataset.outbox}
+    :{mode:action==='lost'?'lost_ack':'success'};
+  const result=await api('/api/integrity/sandbox/crm/'+endpoint,{
+   method:'POST',body:JSON.stringify(payload)
+  });
+  text('simulator-message','Simulated provider result: '+(result.state||result.results?.[0]?.state||'nothing pending'));
+  await inspect(state.selected);
+ }catch(err){text('simulator-message',err.message)}
+ finally{button.disabled=false}
+}
+$('crm-run').addEventListener('click',()=>demoProvider('run'));
+$('crm-lost').addEventListener('click',()=>demoProvider('lost'));
+$('crm-reconcile').addEventListener('click',()=>demoProvider('reconcile'));
 
 $('intake-form').addEventListener('submit',async e=>{
  e.preventDefault();const btn=$('submit-intake');btn.disabled=true;btn.textContent='Submitting…';
