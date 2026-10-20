@@ -95,3 +95,35 @@ test('only verified evidence and a permitted reviewer may resolve; principal ove
   assert.equal(seen.at(-1).tenantId,'tenant-safe');
  });
 });
+
+test('staging read views are tenant-scoped and role-protected',async()=>{
+ const events=[];
+ const store={
+   ...makeStore(events),
+   async listIntakes(x){events.push({method:'listIntakes',x});return [{intakeId:'intake-a',state:'review_needed'}]},
+   async listPeople(x){events.push({method:'listPeople',x});return [{personId:'person-a',name:'Customer'}]},
+   async getIntake(x){events.push({method:'getIntake',x});return {intakeId:x.intakeId,source:'website'}},
+   async outboxForIntake(x){events.push({method:'outboxForIntake',x});return [{state:'pending'}]}
+ };
+ await withApi({store},async({call})=>{
+   const denied=await call('/api/integrity/intakes',{roles:'sales'});
+   assert.equal(denied.status,403);
+   const list=await call('/api/integrity/intakes?limit=15',{roles:'reviewer',tenant:'tenant-owner'});
+   assert.equal(list.status,200);
+   assert.equal((await list.json()).items[0].state,'review_needed');
+   assert.equal((await call('/api/integrity/people',{roles:'reviewer',tenant:'tenant-owner'})).status,200);
+   assert.equal((await call('/api/integrity/intakes/intake-a',{roles:'reviewer',tenant:'tenant-owner'})).status,200);
+   assert.equal((await call('/api/integrity/intakes/intake-a/deliveries',{roles:'reviewer'})).status,403);
+   assert.equal((await call('/api/integrity/intakes/intake-a/deliveries',{roles:'integration_admin',tenant:'tenant-owner'})).status,200);
+ });
+ assert.equal(events.filter(x=>x.x.tenantId==='tenant-owner').length,4);
+ assert.deepEqual(events.filter(x=>x.tenantId && x.tenantId!=='tenant-owner'),[]);
+ assert.deepEqual(events.find(x=>x.method==='listIntakes').x,{tenantId:'tenant-owner',limit:15});
+});
+test('integrity detail reports unknown intake as 404',async()=>{
+ const store={...makeStore([]),getIntake:async()=>null};
+ await withApi({store},async({call})=>{
+   const r=await call('/api/integrity/intakes/unknown',{roles:'reviewer'});
+   assert.equal(r.status,404);
+ });
+});
