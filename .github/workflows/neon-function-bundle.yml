@@ -18,6 +18,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - run: node scripts/verify-design-lock.mjs
       - run: npm install --no-save --ignore-scripts esbuild pg@8
       - name: Bundle isolated Neon Function
         run: |
