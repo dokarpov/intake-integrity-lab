@@ -15,11 +15,14 @@ jobs:
           curl --fail-with-body --retry 3 --retry-delay 3 --connect-timeout 20 -sS "$URL/healthz" | tee /tmp/health.json
           curl --fail-with-body --retry 3 --retry-delay 3 --connect-timeout 20 -sS "$URL/readyz" | tee /tmp/ready.json
           curl --fail-with-body --retry 3 --retry-delay 3 --connect-timeout 20 -sS "$URL/" | grep -q 'Follow one enquiry from receipt'
+          HTTP_CODE=$(curl -sS -o /tmp/unauthorized.json -w '%{http_code}' "$URL/api/me")
+          test "$HTTP_CODE" = 401
           python3 - <<'PY'
           import json
-          a=json.load(open('/tmp/health.json'))
+          health=open('/tmp/health.json').read().strip()
           b=json.load(open('/tmp/ready.json'))
-          assert a.get('ok') is True and a.get('mode')=='synthetic',a
+          # Neon's platform responds to /healthz itself with plain-text ok.
+          assert health=='ok',health
           assert b.get('ok') is True and b.get('database')=='postgres',b
           print('Neon staging HTTP, page, and real database readiness PASS')
           PY
