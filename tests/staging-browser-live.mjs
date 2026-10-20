@@ -38,8 +38,22 @@ try{
    await page.locator('#review-reason').fill('Fictional callback confirms Studio North for this sandbox enquiry.');
    await page.locator('#simulate-identity').check();
    await page.locator('#simulate-consent').check();
+   const apiFailures=[];
+   page.on('response',async response=>{
+     if(response.status>=400&&response.url().includes('/api/')){
+       const error=(await response.json().catch(()=>null))?.error;
+       apiFailures.push({path:new URL(response.url()).pathname,status:response.status,code:error?.code,message:error?.message});
+     }
+   });
    await page.getByRole('button',{name:'Record my decision in PostgreSQL'}).click();
-   await page.locator('#detail-fields').getByText('link_existing').waitFor({timeout:12000});
+   try{
+     await page.locator('#detail-fields').getByText('link_existing').waitFor({timeout:7000});
+   }catch(e){
+     throw new Error('Decision not persisted: '+JSON.stringify({
+       uiMessage:await page.locator('#decision-message').textContent(),
+       apiFailures,detail:await page.locator('#detail-fields').innerText()
+     }));
+   }
    await page.locator('#delivery-state').getByText(/pending/).waitFor({timeout:12000});
    await page.locator('#audit-list').getByText(/intake.decision_recorded/).waitFor({timeout:12000});
    await page.getByRole('button',{name:'Simulate lost acknowledgement'}).click();
