@@ -137,4 +137,5 @@ jobs:
           curl -fsS http://127.0.0.1:8787/healthz
           BASE_URL=http://127.0.0.1:8787 node tests/staging-browser-live.mjs
           BASE_URL=http://127.0.0.1:8787 node tests/source-browser-live.mjs
+          BASE_URL=http://127.0.0.1:8787 node tests/onboarding-browser-live.mjs
 
