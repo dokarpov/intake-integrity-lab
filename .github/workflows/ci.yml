@@ -31,6 +31,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  design_lock:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node scripts/verify-design-lock.mjs
   unit:
     runs-on: ubuntu-latest
     steps:
@@ -40,6 +48,16 @@ jobs:
           node-version: '22'
       - run: npm install --ignore-scripts
       - run: npm test
+
+  integrity_api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --ignore-scripts
+      - run: node --test tests/sales-integrity-api.test.js tests/sales-integrity-worker.test.js
 
   postgres:
     runs-on: ubuntu-latest
@@ -69,16 +87,56 @@ jobs:
 
   browser:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: ledger
+          POSTGRES_USER: ledger_admin
+          POSTGRES_PASSWORD: local-dev-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ledger_admin -d ledger"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgres://ledger_admin:local-dev-only@127.0.0.1:5432/ledger
+      INTAKE_MIGRATION_TARGET: staging
+      INTEGRITY_PG_V2_ENABLED: 'true'
+      INTEGRITY_SANDBOX_ENABLED: 'true'
+      SANDBOX_EVIDENCE_HMAC_SECRET: ci-only-hmac-for-fictional-review-decisions-signing-key
+      INTEGRITY_FINGERPRINT_HMAC_SECRET: ci-only-synthetic-identity-fingerprints-32-chars
+      STAGING_FIXTURES: 'true'
+      NODE_ENV: staging
+      HOST: 127.0.0.1
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: npm install --no-save playwright
+      - run: npm install --no-save playwright pg@8
       - run: npx playwright install --with-deps chromium
-      - run: |
+      - name: Migrate and seed PostgreSQL test environment
+        run: |
+          node scripts/migrate-staging.mjs --apply
+          node scripts/seed-staging.mjs
+      - name: Run legacy browser smoke
+        run: |
           python3 -m http.server 4173 >/tmp/http.log 2>&1 &
           sleep 2
-      - env:
-          BASE_URL: http://127.0.0.1:4173
-        run: node tests/demo-browser-smoke.mjs
+          BASE_URL=http://127.0.0.1:4173 node tests/demo-browser-smoke.mjs
+      - name: Run real PostgreSQL browser journey
+        run: |
+          node service/server.mjs >/tmp/intake-api.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8787/healthz >/dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8787/healthz
+          BASE_URL=http://127.0.0.1:8787 node tests/staging-browser-live.mjs
+          BASE_URL=http://127.0.0.1:8787 node tests/source-browser-live.mjs
+          BASE_URL=http://127.0.0.1:8787 node tests/onboarding-browser-live.mjs
+          BASE_URL=http://127.0.0.1:8787 node tests/scroll-story-browser.mjs
+

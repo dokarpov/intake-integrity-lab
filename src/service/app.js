@@ -11,20 +11,157 @@ function pathMatch(path,pattern){const a=path.split('/').filter(Boolean),b=patte
 function parseLimit(v,def=100,max=500){const n=Number(v);return Number.isFinite(n)?Math.max(1,Math.min(max,Math.trunc(n))):def}
 function subjectRefString(ref){return typeof ref==='string'?ref:ref?.ref}
 function operationAudit(policy,principal,subjectRef,extra={}){return{actor:actor(principal),subjectRef,...policy,policyRefs:policy.policyRefs||[],...extra}}
-function httpStatusFor(error){if(error.statusCode)return error.statusCode;const m=String(error.message||'');if(/required|invalid|not_allowed|fields_|missing|unsupported|transition|conflict|already|not_proposed|not_approved/.test(m))return 400;if(/not_found/.test(m))return 404;if(/forbidden|denied/.test(m))return 403;if(/claim/.test(m)&&/conflict|another/.test(m))return 409;return 500}
+function httpStatusFor(error){if(error.statusCode)return error.statusCode;if(/idempotency_key_payload_conflict|enquiry_already_decided|delivery_lease_conflict/.test(String(error.message||'')))return 409;const m=String(error.message||'');if(/required|invalid|not_allowed|fields_|missing|unsupported|transition|conflict|already|not_proposed|not_approved/.test(m))return 400;if(/not_found/.test(m))return 404;if(/forbidden|denied/.test(m))return 403;if(/claim/.test(m)&&/conflict|another/.test(m))return 409;return 500}
 
-export function createApiHandler({authenticator,runtimes,policies,rateLimiter,intakeConfig={},oneCConfig=null,identityResolver=null,fetchFn=globalThis.fetch,controlStatusProvider=null}={}){
+export function createApiHandler({authenticator,runtimes,policies,rateLimiter,intakeConfig={},oneCConfig=null,identityResolver=null,fetchFn=globalThis.fetch,controlStatusProvider=null,integrityStore=null,integrityEvidenceVerifier=null,sandboxEvidenceProvider=null,sandboxCrmSimulator=null,sourceComparisonStore=null}={}){
   if(!authenticator||!runtimes||!policies)throw new Error('service_dependencies_required');
   return async function handler(req,res){
     const requestId=correlationId(req);res.setHeader('x-request-id',requestId);res.setHeader('referrer-policy','no-referrer');res.setHeader('permissions-policy','camera=(), microphone=(), geolocation=()');
     try{
       const url=new URL(req.url,'http://service.local');
       if(req.method==='GET'&&url.pathname==='/healthz')return sendJson(res,200,{ok:true,service:'intake-integrity',version:'0.6.0'},{requestId});
-      if(req.method==='GET'&&url.pathname==='/readyz')return sendJson(res,200,{ok:true},{requestId});
+      if(req.method==='GET'&&url.pathname==='/readyz'){
+        if(integrityStore?.pool?.query){
+          try{await integrityStore.pool.query('SELECT 1 FROM sales_incoming_enquiries LIMIT 1')}
+          catch{return sendJson(res,503,{ok:false,error:'database_unavailable'},{requestId})}
+        }
+        return sendJson(res,200,{ok:true},{requestId});
+      }
       let principal;try{principal=await authenticator.authenticate(req)}catch(e){e.statusCode=e.statusCode||401;e.code=e.code||'unauthorized';throw e}const rt=runtimes.tenant(principal.tenantId);
       const rl=rateLimiter?.check(`${principal.tenantId}:${principal.id}:${url.pathname}`,url.pathname.startsWith('/api/audit/export')?{limit:10,windowMs:60_000}:undefined);if(rl&&!rl.allowed){res.setHeader('retry-after',String(Math.ceil(rl.retryAfterMs/1000)));throw Object.assign(new Error('rate_limit_exceeded'),{statusCode:429})}
 
       if(req.method==='GET'&&url.pathname==='/api/me')return sendJson(res,200,{id:principal.id,name:principal.name,tenantId:principal.tenantId,roles:principal.roles,permissions:[...principal.permissions].sort()},{requestId});
+
+      // Opt-in transactional PostgreSQL integrity v2. The existing API stays unchanged.
+      // Authenticated tenant/actor always override browser-provided fields.
+      if(url.pathname.startsWith('/api/integrity/')){
+        if(!integrityStore)throw Object.assign(new Error('integrity_v2_disabled'),{statusCode:404});
+        if(req.method==='POST'&&url.pathname==='/api/integrity/sandbox/crm/run'){
+          requirePermission(principal,'integration.test');
+          if(!sandboxCrmSimulator||principal.tenantId!=='staging-demo')
+            throw Object.assign(new Error('sandbox_disabled'),{statusCode:404});
+          const body=await readJson(req);
+          const result=await sandboxCrmSimulator.runOnce({
+            mode:body.mode==='lost_ack'?'lost_ack':'success',limit:1,outboxId:body.outboxId
+          });
+          return sendJson(res,200,result,{requestId});
+        }
+        if(req.method==='POST'&&url.pathname==='/api/integrity/sandbox/crm/reconcile'){
+          requirePermission(principal,'integration.test');
+          if(!sandboxCrmSimulator||principal.tenantId!=='staging-demo')
+            throw Object.assign(new Error('sandbox_disabled'),{statusCode:404});
+          const body=await readJson(req);
+          const result=await sandboxCrmSimulator.reconcile({outboxId:body.outboxId});
+          return sendJson(res,200,result,{requestId});
+        }
+        if(req.method==='POST'&&url.pathname==='/api/integrity/sandbox/evidence'){
+          requirePermission(principal,'review.resolve');
+          if(!sandboxEvidenceProvider)throw Object.assign(new Error('sandbox_disabled'),{statusCode:404});
+          const body=await readJson(req);
+          const result=await sandboxEvidenceProvider.issue({
+            ...body,tenantId:principal.tenantId,actorId:principal.id
+          });
+          return sendJson(res,200,result,{requestId});
+        }
+        if(sourceComparisonStore&&url.pathname.startsWith('/api/integrity/sources/')){
+          if(req.method==='GET'&&url.pathname==='/api/integrity/sources/latest'){
+            requirePermission(principal,'review.read');
+            return sendJson(res,200,await sourceComparisonStore.latest({tenantId:principal.tenantId}),{requestId});
+          }
+          if(req.method==='GET'&&url.pathname==='/api/integrity/sources/comparison/latest'){
+            requirePermission(principal,'review.read');
+            return sendJson(res,200,(await sourceComparisonStore.latestComparison({tenantId:principal.tenantId}))||{comparisonId:null},{requestId});
+          }
+          if(req.method==='POST'&&url.pathname==='/api/integrity/sources/snapshots'){
+            requirePermission(principal,'integration.test');
+            const value=await readJson(req,{maxBytes:64000});
+            return sendJson(res,201,await sourceComparisonStore.importSnapshot({...value,tenantId:principal.tenantId,actorRef:principal.id}),{requestId});
+          }
+          if(req.method==='POST'&&url.pathname==='/api/integrity/sources/compare'){
+            requirePermission(principal,'review.read');
+            return sendJson(res,200,await sourceComparisonStore.compareLatest({tenantId:principal.tenantId,actorRef:principal.id}),{requestId});
+          }
+          if(req.method==='GET'&&url.pathname==='/api/integrity/sources/assessments'){
+            requirePermission(principal,'review.read');
+            return sendJson(res,200,{items:await sourceComparisonStore.assessments({tenantId:principal.tenantId,comparisonId:url.searchParams.get('comparisonId')})},{requestId});
+          }
+          if(req.method==='POST'&&url.pathname==='/api/integrity/sources/assessments'){
+            requirePermission(principal,'review.resolve');
+            const value=await readJson(req);
+            return sendJson(res,201,await sourceComparisonStore.assess({...value,tenantId:principal.tenantId,actorRef:principal.id}),{requestId});
+          }
+        }
+        if(req.method==='POST'&&url.pathname==='/api/integrity/intakes'){
+          requirePermission(principal,'intake.submit');
+          const body=await readJson(req);
+          const record=await integrityStore.receiveEnquiry({...body,tenantId:principal.tenantId,actorId:principal.id});
+          return sendJson(res,record.replayed?200:201,record,{requestId});
+        }
+        if(req.method==='GET'&&url.pathname==='/api/integrity/intakes'){
+          requirePermission(principal,'review.read');
+          const items=await integrityStore.listIntakes({
+            tenantId:principal.tenantId,limit:parseLimit(url.searchParams.get('limit'),50,100)
+          });
+          return sendJson(res,200,{items},{requestId});
+        }
+        if(req.method==='GET'&&url.pathname==='/api/integrity/people'){
+          requirePermission(principal,'review.read');
+          const items=await integrityStore.listPeople({
+            tenantId:principal.tenantId,limit:parseLimit(url.searchParams.get('limit'),100,100)
+          });
+          return sendJson(res,200,{items},{requestId});
+        }
+        let detailMatch=pathMatch(url.pathname,'/api/integrity/intakes/:id');
+        if(req.method==='GET'&&detailMatch){
+          requirePermission(principal,'review.read');
+          const record=await integrityStore.getIntake({
+            tenantId:principal.tenantId,intakeId:detailMatch.id
+          });
+          if(!record)throw Object.assign(new Error('intake_not_found'),{statusCode:404});
+          return sendJson(res,200,record,{requestId});
+        }
+        detailMatch=pathMatch(url.pathname,'/api/integrity/intakes/:id/deliveries');
+        if(req.method==='GET'&&detailMatch){
+          requirePermission(principal,'integration.read');
+          const items=await integrityStore.outboxForIntake({
+            tenantId:principal.tenantId,intakeId:detailMatch.id
+          });
+          return sendJson(res,200,{items},{requestId});
+        }
+        let match=pathMatch(url.pathname,'/api/integrity/intakes/:id/candidates');
+        if(req.method==='GET'&&match){
+          requirePermission(principal,'review.read');
+          const records=await integrityStore.candidates({tenantId:principal.tenantId,intakeId:match.id});
+          return sendJson(res,200,{items:records},{requestId});
+        }
+        match=pathMatch(url.pathname,'/api/integrity/intakes/:id/history');
+        if(req.method==='GET'&&match){
+          requirePermission(principal,'audit.read');
+          const history=await integrityStore.history({tenantId:principal.tenantId,intakeId:match.id});
+          return sendJson(res,200,history,{requestId});
+        }
+        match=pathMatch(url.pathname,'/api/integrity/intakes/:id/decisions');
+        if(req.method==='POST'&&match){
+          requirePermission(principal,'review.resolve');
+          if(!integrityEvidenceVerifier?.verifyDecision){
+            throw Object.assign(new Error('trusted_evidence_verifier_required'),{statusCode:503});
+          }
+          const body=await readJson(req);
+          // Verify source of identity/permission evidence, not just a JSON flag.
+          const result=await integrityEvidenceVerifier.verifyDecision({
+            tenantId:principal.tenantId,actorId:principal.id,intakeId:match.id,
+            action:body.action,personId:body.personId,identityEvidenceRef:body.identityEvidenceRef,
+            consentEvidenceRef:body.consentEvidenceRef
+          });
+          if(result!==true)throw Object.assign(new Error('decision_evidence_not_verified'),{statusCode:403});
+          const record=await integrityStore.decideEnquiry({
+            ...body,tenantId:principal.tenantId,intakeId:match.id,actorId:principal.id
+          });
+          return sendJson(res,200,record,{requestId});
+        }
+        throw Object.assign(new Error('route_not_found'),{statusCode:404});
+      }
+
 
       if(req.method==='POST'&&url.pathname==='/api/intakes'){
         requirePermission(principal,'intake.submit');const body=await readJson(req);const identitySeed=body.primaryContact?.phone||body.primaryContact?.email;if(!identitySeed)throw Object.assign(new Error('primary_contact_phone_or_email_required'),{statusCode:400});const subjectRef=await runtimes.subjectRef(identitySeed);

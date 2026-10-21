@@ -1,0 +1,47 @@
+name: verify-neon-staging-public
+on:
+  push:
+    branches: [testing/postgres-integrity-2026-10-20]
+    paths: ['.github/workflows/verify-neon-staging.yml']
+  workflow_dispatch:
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check deployed staging HTTP and PostgreSQL readiness
+        env:
+          URL: https://br-shiny-union-bajmnaa3-intakestaging.compute.c-8.eu-central-1.aws.neon.tech
+        run: |
+          curl --fail-with-body --retry 3 --retry-delay 3 --connect-timeout 20 -sS "$URL/healthz" | tee /tmp/health.json
+          curl --fail-with-body --retry 3 --retry-delay 3 --connect-timeout 20 -sS "$URL/readyz" | tee /tmp/ready.json
+          curl --fail-with-body --retry 3 --retry-delay 3 --connect-timeout 20 -sS "$URL/integrity" -o /tmp/deployed-intake.html
+          cmp -s demo/integrity.html /tmp/deployed-intake.html
+          curl --fail-with-body --connect-timeout 20 -sS "$URL/" -o /tmp/deployed-onboarding.html
+          cmp -s demo/onboarding.html /tmp/deployed-onboarding.html
+          grep -q "Where does your customer information live?" /tmp/deployed-onboarding.html
+          echo "ONBOARDING FIRST, APPROVED MAIN VISUAL PRESERVED"
+          echo "APPROVED MAIN VISUAL DEPLOYED EXACTLY"
+          grep -q 'Follow one enquiry from receipt' /tmp/deployed-intake.html
+          # New first-run screen asks about tools and channels before showing an action.
+          grep -q "Which systems store your customer records?" /tmp/deployed-onboarding.html
+          grep -q "Where do your new enquiries arrive?" /tmp/deployed-onboarding.html
+          # New read-only source comparison page is served by the deployed Neon function.
+          curl --fail-with-body --connect-timeout 20 -sS "$URL/sources" -o /tmp/deployed-source.html
+          cmp -s demo/source-comparison.html /tmp/deployed-source.html
+          echo "APPROVED SOURCE VISUAL DEPLOYED EXACTLY"
+          grep -q "Compare customer records before they change" /tmp/deployed-source.html
+          grep -q "Load two fictional exports and compare" /tmp/deployed-source.html
+          SOURCES_AUTH=$(curl -sS -o /tmp/sources-unauthorized.json -w '%{http_code}' "$URL/api/integrity/sources/latest")
+          test "$SOURCES_AUTH" = 401
+          HTTP_CODE=$(curl -sS -o /tmp/unauthorized.json -w '%{http_code}' "$URL/api/me")
+          test "$HTTP_CODE" = 401
+          python3 - <<'PY'
+          import json
+          health=open('/tmp/health.json').read().strip()
+          b=json.load(open('/tmp/ready.json'))
+          # Neon's platform responds to /healthz itself with plain-text ok.
+          assert health=='ok',health
+          assert b.get('ok') is True and b.get('database')=='postgres',b
+          print('Neon staging HTTP, page, and real database readiness PASS')
+          PY

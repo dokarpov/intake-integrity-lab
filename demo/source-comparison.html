@@ -1,0 +1,280 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#ffffff"><title>Intake Integrity | Source comparison</title>
+<style>
+:root{font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;color:#202020;background:#fff;line-height:1.5}
+*,*::before,*::after{box-sizing:border-box}body{margin:0;background:#fff;min-width:320px}
+button,input,textarea,select{font:inherit}button{cursor:pointer}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid #202020;outline-offset:3px}
+.wrap{max-width:1170px;padding:0 28px;margin:auto}
+header{border-bottom:1px solid #e5e5e5;min-height:72px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.brand{font-size:18px;font-weight:800;letter-spacing:-.055em}header small{color:#666;font-size:12px}
+.intro{padding:47px 0 30px;max-width:760px}.eyebrow{font-size:11px;letter-spacing:.07em;font-weight:700;color:#777;text-transform:uppercase}
+h1,h2,h3{margin:0;letter-spacing:-.045em;line-height:1.13}
+h1{font-size:clamp(35px,5vw,61px);margin:13px 0 16px}h2{font-size:24px}h3{font-size:18px}
+p{margin:10px 0 0}.intro p{max-width:660px;font-size:15px;color:#545454;line-height:1.7}
+.layout{display:grid;grid-template-columns:minmax(0,.94fr) minmax(0,1.06fr);gap:20px;align-items:start;padding-bottom:60px}
+.card{border:1px solid #dadada;background:#fff;border-radius:9px;padding:25px;min-width:0}
+.card-title{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:21px}
+.pill{border:1px solid #d8d8d8;border-radius:99px;padding:4px 9px;font-size:11px;color:#444;white-space:nowrap}
+.field{margin-bottom:17px}.field label{display:block;margin-bottom:6px;font-weight:700;font-size:12px;color:#454545}
+.field input,.field textarea,.field select{border:1px solid #cbcbcb;background:#fff;border-radius:5px;padding:11px 12px;color:#202020;min-height:45px;width:100%;font-size:14px}
+.field textarea{min-height:83px;resize:vertical}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:13px}.grid > *{min-width:0}
+.action{background:#202020;color:#fff;font-weight:700;border:1px solid #202020;border-radius:6px;padding:11px 18px;min-height:45px;font-size:13px}
+.action:hover{background:#444}.action:disabled{background:#bbb;border-color:#bbb;cursor:wait}
+.secondary{background:#fff;color:#202020;border:1px solid #aaa;border-radius:6px;padding:9px 13px;font-size:12px;font-weight:700}
+.secondary:hover{background:#f7f7f7}
+.hint{color:#626262;font-size:12px;line-height:1.6}.result{border-top:1px solid #e7e7e7;margin-top:22px;padding-top:18px}
+.result[hidden],.details[hidden],.auth-panel[hidden]{display:none}
+.tiny{font-size:11px;color:#777;line-height:1.6;overflow-wrap:anywhere}
+.result pre{white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.65 ui-monospace,SFMono-Regular,monospace;color:#383838;margin:9px 0}
+.line{border-bottom:1px solid #eee;padding:12px 0}
+.line:last-child{border-bottom:0}
+.line-button{display:block;width:100%;text-align:left;background:#fff;border:0;padding:12px 0;border-bottom:1px solid #eee}
+.line-button:hover{background:#fafafa}
+.line-button strong{display:block;font-size:14px;overflow-wrap:anywhere}
+.line-button span{font-size:12px;color:#666;overflow-wrap:anywhere}
+.text-row{display:grid;grid-template-columns:112px 1fr;gap:10px;padding:8px 0;font-size:13px;overflow-wrap:anywhere}
+.text-row b{color:#656565;font-weight:500}
+.empty{font-size:13px;color:#666;margin-top:14px}
+.auth-bar{margin-bottom:24px;padding:15px 18px;border:1px solid #dfdfdf;border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:14px}
+.auth-bar strong{font-size:13px}.auth-bar span{color:#5a5a5a;font-size:12px}
+.auth-panel{padding:13px 17px;border:1px solid #e0e0e0;border-radius:8px;margin-bottom:20px}
+.checkline{display:flex;gap:9px;align-items:flex-start;font-size:12px;line-height:1.5;margin:12px 0;color:#454545}.checkline input{flex:0 0 17px;width:17px;height:17px;margin:2px 0;accent-color:#202020}.kv[hidden]{display:none}#simulator-controls[hidden]{display:none!important}
+.auth-panel .field{margin-bottom:10px}
+.timeline{padding:0;margin:10px 0 0;list-style:none}
+.timeline li{padding:10px 0;border-bottom:1px solid #e8e8e8;font-size:12px;color:#454545;overflow-wrap:anywhere}
+.kv{margin-top:15px;padding-top:14px;border-top:1px solid #ddd}
+.err{color:#ad2b1a}.ok{color:#252525;font-weight:700}
+.foot{border-top:1px solid #e5e5e5;padding:22px 0 42px;color:#696969;font-size:12px;line-height:1.6}
+@media(max-width:860px){.layout{grid-template-columns:1fr}.intro{padding:38px 0 25px}}
+@media(max-width:580px){.wrap{padding:0 18px}header{min-height:62px}.intro h1{font-size:37px}.layout{gap:13px}.card{padding:19px}.grid{grid-template-columns:1fr;gap:0}.auth-bar{align-items:flex-start;flex-direction:column}.text-row{grid-template-columns:95px 1fr}}
+
+/* Source comparison reuses the approved staging design system without new branding. */
+.hero{padding:47px 0 30px;max-width:760px}
+.hero p{max-width:660px;font-size:15px;color:#545454;line-height:1.7;margin-top:10px}
+.kicker{font-size:11px;letter-spacing:.07em;font-weight:700;color:#777;text-transform:uppercase}
+.fields{display:grid;grid-template-columns:minmax(0,.94fr) minmax(0,1.06fr);gap:20px;align-items:start}
+.panel,.report{border:1px solid #dadada;background:#fff;border-radius:9px;padding:25px;min-width:0}
+.panel h2{font-size:24px}.panel p{margin:10px 0 20px;font-size:13px;line-height:1.65;color:#626262}
+.caption{display:block;margin:14px 0 7px;font-weight:700;font-size:12px;color:#454545}
+.fileinput{width:100%;border:1px solid #cbcbcb;background:#fff;border-radius:5px;padding:11px 12px;color:#202020;min-height:45px;font-size:13px}
+.samplehint{font-size:12px;color:#626262;line-height:1.6;margin:13px 0 17px}
+.controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:20px 0 30px}
+.status{font-size:12px;color:#626262;line-height:1.6;overflow-wrap:anywhere}
+.btn{background:#202020;color:#fff;font-weight:700;border:1px solid #202020;border-radius:6px;padding:11px 18px;min-height:45px;font-size:13px}
+.btn:hover{background:#444}.btn:disabled{opacity:.6;cursor:wait}
+.outline{background:#fff;color:#202020;border:1px solid #aaa}
+.outline:hover{background:#f7f7f7}
+.authbar{margin-bottom:24px;padding:15px 18px;border:1px solid #dfdfdf;border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:14px}
+.authbar span{font-size:13px;font-weight:700}
+#auth-panel{padding:13px 17px;border:1px solid #e0e0e0;border-radius:8px;margin-bottom:20px}
+#auth-panel input{display:block;min-height:45px;width:min(100%,520px);border:1px solid #cbcbcb;padding:11px;margin:9px 0;border-radius:5px;background:#fff;color:#202020}
+#auth-panel .btn{margin-top:7px}
+.panel[hidden],.report[hidden],#auth-panel[hidden]{display:none}
+details{border-top:1px solid #e8e8e8;padding:15px 0;margin-top:16px}
+summary{font-weight:700;font-size:13px;cursor:pointer}
+.steps{font-size:12px;color:#626262;line-height:1.6;margin:10px 0}
+h2{font-size:24px}h3{font-size:18px}
+.report{margin-bottom:32px}
+.reportdesc{font-size:13px;line-height:1.65;color:#545454;margin:10px 0 20px}
+.summary{display:flex;gap:16px;flex-wrap:wrap;border:1px solid #e5e5e5;background:#fff;border-radius:7px;padding:18px;margin:18px 0}
+.metric{flex:1;min-width:115px}
+.metric strong{display:block;color:#202020;font-size:24px;letter-spacing:-.045em}
+.metric span{font-size:11px;color:#626262}
+.finding{padding:17px 0;border-bottom:1px solid #e7e7e7;min-width:0}
+.finding:last-child{border-bottom:0}
+.findinghead{display:flex;gap:12px;align-items:start;justify-content:space-between}
+.finding b{font-size:14px}.finding small{font-size:11px;color:#626262;font-weight:700}
+.diff{margin-top:11px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.diff>div{min-width:0;border:1px solid #e5e5e5;padding:12px;border-radius:6px;overflow-wrap:anywhere}
+.diff span{display:block;color:#626262;font-size:11px;margin-bottom:5px}
+.diff strong{font-size:14px}
+.explain{font-size:12px;color:#626262;margin:8px 0 0;line-height:1.6}
+textarea{width:100%;min-height:83px;border:1px solid #cbcbcb;border-radius:5px;padding:11px 12px;margin:12px 0;resize:vertical;font-size:13px;background:#fff;color:#202020}
+select{width:100%;border:1px solid #cbcbcb;padding:11px 12px;border-radius:5px;font-size:13px;background:#fff;color:#202020}
+.footer{border-top:1px solid #e5e5e5;padding:22px 0 42px;margin-top:45px;color:#696969;font-size:12px;line-height:1.6}
+@media(max-width:860px){.fields{grid-template-columns:1fr}.hero{padding:38px 0 25px}}
+@media(max-width:580px){.wrap{padding:0 18px}.hero h1{font-size:37px}.panel,.report{padding:19px}.diff{grid-template-columns:1fr}.authbar{align-items:flex-start;flex-direction:column}.controls .btn{width:100%}}
+</style></head><body><div class="wrap">
+<header><div class="brand">intake / integrity</div><small>Persistent PostgreSQL test</small></header>
+<main>
+<section class="hero"><span class="kicker">Staging · real PostgreSQL comparison</span>
+<h1>Compare customer records before they change.</h1>
+<p>For CRM/1C integrators: compare two source exports before changing a customer or counterparty. This read-only checkpoint exposes missing, ambiguous and conflicting records without selecting a winner or modifying either system.</p></section>
+<div class="authbar"><span id="connection">Connect your testing account</span><button class="btn outline" id="auth-toggle">Authentication</button></div>
+<div id="auth-panel" hidden><label class="caption" for="access-token">Staging access token</label><input id="access-token" type="password" autocomplete="off" placeholder="Paste your private staging token">
+<button class="btn" id="auth-connect">Connect</button></div>
+<div class="controls"><button class="btn" id="load-example">Load two fictional exports and compare</button><span class="status" id="loading-status">Or import CSV exports below (fictional/anonymized data only).</span></div>
+<section class="fields" aria-label="Source imports">
+<article class="panel"><h2>1C source</h2><p>Counterparties and associated contacts. Use a shared cross-system key where mapping is known.</p>
+<label for="one-file" class="caption">1C CSV file</label><input class="fileinput" id="one-file" type="file" accept=".csv,text/csv,text/plain">
+<div class="samplehint" id="one-preview">No file selected.</div>
+<button class="btn outline" type="button" id="one-upload">Import 1C snapshot</button></article>
+<article class="panel"><h2>Bitrix24 source</h2><p>Contacts, companies, ownership and the current system-native status. Statuses are not translated automatically.</p>
+<label for="bitrix-file" class="caption">Bitrix24 CSV file</label><input class="fileinput" id="bitrix-file" type="file" accept=".csv,text/csv,text/plain">
+<div class="samplehint" id="bitrix-preview">No file selected.</div>
+<button class="btn outline" type="button" id="bitrix-upload">Import Bitrix24 snapshot</button></article>
+</section>
+<details><summary>CSV columns and mapping assumptions</summary><p class="steps">UTF-8 or Windows-1251 CSV; comma, semicolon or tab separators supported. Header names: <code>sourceRecordId, sharedKey, company, counterpartyType, contactRef, ownerRef, originalStatus</code>. Russian aliases supported for common columns: ИД, ВнешнийКод, Контрагент, ТипКонтрагента, Контакт, Ответственный, Статус. The <b>sharedKey must be explicitly mapped across systems</b>; a matching name is not identity proof. Unsupported exports need mapping, not guessing. Import limited to 100 fictional/anonymized rows per source.</p></details>
+<div class="controls"><button class="btn" id="compare">Compare latest imported snapshots</button><button class="btn outline" id="reload">Reload last comparison</button><span id="compare-status" class="status" role="status"></span></div>
+<section id="report" class="report" hidden>
+<div class="kicker">Evidence comparison · no writes to either source</div><h2 id="report-title">Comparison</h2><p class="reportdesc" id="report-desc"></p><div class="summary" id="summary"></div>
+<div id="findings"></div>
+<details id="review-area"><summary>Your assessment — no automatic business decision</summary>
+<label class="caption" for="assessment">How would you handle these discrepancies?</label><select id="assessment">
+<option value="requires_verification">Request evidence / clarification</option>
+<option value="investigate_mapping">Investigate source mapping</option>
+<option value="acceptable_difference">Document acceptable differences</option></select>
+<label class="caption" for="reason">Why?</label><textarea id="reason" placeholder="What information is missing or why is this difference acceptable?"></textarea>
+<button class="btn" type="button" id="save-assessment">Record assessment</button>
+<p class="status" id="assessment-status" role="status"></p><div id="past-assessments"></div>
+</details>
+</section>
+</main><footer class="footer">Read-only, fictional-data staging. No live 1C or Bitrix24 API connection, source writeback, customer identity verification or inferred production status. PostgreSQL stores imported snapshots and decisions.</footer>
+</div>
+<script>
+(()=>{'use strict';
+const $=id=>document.getElementById(id);
+const tokenKey='intake-staging-access';
+let token=sessionStorage.getItem(tokenKey)||'',latestReport=null,files={};
+const schema=['sourceRecordId','sharedKey','company','counterpartyType','contactRef','ownerRef','originalStatus'];
+const aliases={sourceRecordId:['sourcerecordid','id','ид','код'],sharedKey:['sharedkey','externalkey','внешнийкод','внешнийид'],company:['company','контрагент','название','компания'],counterpartyType:['counterpartytype','типконтрагента','тип'],contactRef:['contactref','контакт','контактid'],ownerRef:['ownerref','ответственный','владелец'],originalStatus:['originalstatus','статус','status']};
+const normalize=s=>String(s||'').toLowerCase().replace(/[ _-]/g,'').trim();
+const make=(tag,text,cls='')=>{const el=document.createElement(tag);el.textContent=String(text??'');if(cls)el.className=cls;return el};
+async function api(path,options={}){
+ const headers={'content-type':'application/json',...options.headers};
+ if(['localhost','127.0.0.1'].includes(location.hostname))Object.assign(headers,{'x-dev-user':'staging.operator','x-dev-tenant':'staging-demo','x-dev-roles':'sales,reviewer,auditor,integration_admin'});
+ if(token)headers.authorization='Bearer '+token;
+ const r=await fetch(path,{...options,headers,cache:'no-store'});
+ const v=await r.json().catch(()=>({}));
+ if(!r.ok)throw Error(v.error?.code||v.error?.message||'Request failed: HTTP '+r.status);
+ return v;
+}
+async function connect(){
+ try{const me=await api('/api/me');$('connection').textContent='Connected: '+me.name+' · '+me.tenantId;$('auth-panel').hidden=true}
+ catch(e){$('connection').textContent='Authentication required';$('auth-panel').hidden=false}
+}
+function parseCsv(text){
+ text=text.replace(/^\uFEFF/,'');
+ const firstLine=text.split(/\r?\n/,1)[0];
+ const counts=[',',';','\t'].map(c=>[c,(firstLine.split(c).length-1)]);
+ counts.sort((a,b)=>b[1]-a[1]);
+ const delimiter=counts[0][1]>0?counts[0][0]:',';
+ const rows=[],line=[];let str='',quoted=false;
+ for(let i=0;i<text.length;i++){
+  const ch=text[i];
+  if(ch==='"'){if(quoted&&text[i+1]==='"'){str+='"';i++}else quoted=!quoted}
+  else if(ch===delimiter&&!quoted){line.push(str);str=''}
+  else if((ch==='\n'||ch==='\r')&&!quoted){
+   if(ch==='\r'&&text[i+1]==='\n')i++;
+   line.push(str);str='';
+   if(line.some(x=>x.trim()))rows.push(line.slice());line.length=0;
+  }else str+=ch;
+ }
+ if(quoted)throw Error('Unclosed CSV quote');
+ line.push(str);if(line.some(x=>x.trim()))rows.push(line);
+ if(rows.length<2)throw Error('CSV must contain a header and at least one record');
+ const headers=rows.shift().map(normalize);
+ const mapped=Object.fromEntries(schema.map(field=>[field,headers.findIndex(h=>aliases[field].includes(h))]));
+ if(mapped.sourceRecordId<0||mapped.company<0)throw Error('CSV requires sourceRecordId and company columns');
+ return rows.map((values,index)=>{
+  if(values.length!==headers.length)throw Error('Row '+(index+2)+' has a different number of columns');
+  return Object.fromEntries(schema.map(field=>[field,mapped[field]<0?null:(values[mapped[field]].trim()||null)]));
+ });
+}
+async function upload(source,rows,importKey){
+ const r=await api('/api/integrity/sources/snapshots',{method:'POST',body:JSON.stringify({source,importKey,rows})});
+ return r;
+}
+const samples={
+ '1c':[
+ {sourceRecordId:'1C-100',sharedKey:'account-north',company:'Studio North',counterpartyType:'OOO',contactRef:'person-19',ownerRef:'Mia',originalStatus:'Active'},
+ {sourceRecordId:'1C-200',sharedKey:'account-east',company:'Studio East',counterpartyType:'OOO',contactRef:'person-44',ownerRef:'Luca',originalStatus:'Active'},
+ {sourceRecordId:'1C-300',sharedKey:'account-orphan',company:'Old Pine',counterpartyType:'IP',contactRef:'person-70',ownerRef:'Roman',originalStatus:'Active'},
+ {sourceRecordId:'1C-400',sharedKey:null,company:'Unlinked Paper',counterpartyType:'OOO',contactRef:'person-88',ownerRef:'Team',originalStatus:'Active'}],
+ 'bitrix24':[
+ {sourceRecordId:'B-900',sharedKey:'account-north',company:'Studio North',counterpartyType:'IP',contactRef:'person-19',ownerRef:'Mia',originalStatus:'In progress'},
+ {sourceRecordId:'B-901',sharedKey:'account-east',company:'Studio East',counterpartyType:'OOO',contactRef:'person-44',ownerRef:'Luca',originalStatus:'Won'},
+ {sourceRecordId:'B-902',sharedKey:'account-new',company:'New Shop',counterpartyType:'OOO',contactRef:'person-64',ownerRef:'Anna',originalStatus:'New'},
+ {sourceRecordId:'B-903',sharedKey:'account-east',company:'Studio East',counterpartyType:'OOO',contactRef:'person-44',ownerRef:'Luca',originalStatus:'Won'}]
+};
+const labels={field_difference:'Different values',field_not_comparable:'Missing field evidence',ambiguous_shared_key:'Ambiguous mapping',missing_in_1c:'Absent in 1C',missing_in_bitrix24:'Absent in Bitrix24',unmapped_source_record:'No verified cross-system key'};
+function result(report){
+ latestReport=report;$('report').hidden=false;$('report-title').textContent='What differs between these sources?';
+ $('report-desc').textContent='Compared using explicit shared keys. Unmatched names are not merged. Each finding is evidence, not a business decision.';
+ const count=report.counts||{};
+ const metrics=[['Compared pairs',count.comparedPairs],['Field differences',count.fieldDifferences],['Ambiguous keys',count.ambiguousKeys],['Unpaired records',count.unpairedRecords],['Unmapped records',count.unmappedRecords]];
+ $('summary').replaceChildren(...metrics.map(([k,v])=>{const el=make('div','','metric');el.append(make('strong',v),make('span',k));return el}));
+ const target=$('findings');target.replaceChildren();
+ if(!report.observations?.length)target.append(make('p','No differences in this limited policy scope. This does not authorize a CRM write.','steps'));
+ for(const f of report.observations||[]){
+  const el=make('article','','finding'),head=make('div','','findinghead');
+  head.append(make('b',labels[f.code]||f.code),make('small',f.sharedKey||'No mapping key'));el.append(head);
+  if(f.field)el.append(make('p','Field: '+f.field,'explain'));
+  if(f.value1c!==null||f.valueBitrix24!==null){
+   const pair=make('div','','diff');
+   for(const [label,value] of [['1C',f.value1c],['Bitrix24',f.valueBitrix24]]){
+    const side=make('div');side.append(make('span',label),make('strong',Array.isArray(value)?value.join(', '):(value??'Not provided')));pair.append(side)
+   }el.append(pair);
+  }else el.append(make('p','1C: '+(f.sourceRecord1c||'—')+' · Bitrix24: '+(f.sourceRecordBitrix24||'—'),'explain'));
+  target.append(el);
+ }
+ $('report').scrollIntoView({behavior:'smooth',block:'start'});
+ loadAssessments().catch(()=>{});
+}
+async function compare(){const v=await api('/api/integrity/sources/compare',{method:'POST',body:'{}'});result(v);return v}
+async function loadAssessments(){
+ if(!latestReport)return;
+ const a=await api('/api/integrity/sources/assessments?comparisonId='+encodeURIComponent(latestReport.comparisonId));
+ const list=$('past-assessments');list.replaceChildren();
+ for(const x of a.items){const el=make('p',x.assessment+' · '+x.reason,'steps');list.append(el)}
+}
+async function safe(button,fn){
+ button.disabled=true;try{await fn()}catch(e){$('compare-status').textContent=e.message}
+ finally{button.disabled=false}
+}
+$('load-example').addEventListener('click',()=>safe($('load-example'),async()=>{
+ $('compare-status').textContent='Importing two fictional exports into PostgreSQL…';
+ const key=crypto.randomUUID();
+ await upload('1c',samples['1c'],'example-1c-'+key);
+ await upload('bitrix24',samples['bitrix24'],'example-bitrix-'+key);
+ const report=await compare();
+ $('compare-status').textContent='Imported two snapshots and saved '+report.observations.length+' observations.';
+}));
+for(const [source,prefix] of [['1c','one'],['bitrix24','bitrix']]){
+ $(prefix+'-file').addEventListener('change',async()=>{
+  const file=$(prefix+'-file').files[0];if(!file)return;
+  try{
+   const bytes=await file.arrayBuffer();
+   let decoded;
+   try{decoded=new TextDecoder('utf-8',{fatal:true}).decode(bytes)}
+   catch{decoded=new TextDecoder('windows-1251').decode(bytes)}
+   files[source]=parseCsv(decoded);
+   $(prefix+'-preview').textContent=files[source].length+' rows ready for import.';
+  }
+  catch(e){files[source]=null;$(prefix+'-preview').textContent=e.message}
+ });
+ $(prefix+'-upload').addEventListener('click',()=>safe($(prefix+'-upload'),async()=>{
+  if(!files[source])throw Error('Choose a valid CSV file first.');
+  const value=await upload(source,files[source],source+'-csv-'+crypto.randomUUID());
+  $(prefix+'-preview').textContent=value.recordCount+' records saved to PostgreSQL.';
+ }));
+}
+$('compare').addEventListener('click',()=>safe($('compare'),compare));
+$('reload').addEventListener('click',()=>safe($('reload'),async()=>{const v=await api('/api/integrity/sources/comparison/latest');if(!v.comparisonId)throw Error('No comparison saved yet.');result(v)}));
+$('save-assessment').addEventListener('click',()=>safe($('save-assessment'),async()=>{
+ if(!latestReport)throw Error('Run a comparison first.');
+ const reason=$('reason').value.trim();if(reason.length<10)throw Error('Enter a specific reason (at least 10 characters).');
+ await api('/api/integrity/sources/assessments',{method:'POST',body:JSON.stringify({
+  comparisonId:latestReport.comparisonId,assessmentKey:crypto.randomUUID(),
+  assessment:$('assessment').value,reason
+ })});
+ $('assessment-status').textContent='Assessment saved in PostgreSQL. No source data changed.';
+ $('reason').value='';await loadAssessments();
+}));
+$('auth-toggle').addEventListener('click',()=>{$('auth-panel').hidden=!$('auth-panel').hidden});
+$('auth-connect').addEventListener('click',()=>{token=$('access-token').value.trim();sessionStorage.setItem(tokenKey,token);$('access-token').value='';connect()});
+connect().then(async()=>{try{const v=await api('/api/integrity/sources/comparison/latest');if(v?.comparisonId)result(v)}catch{}});
+})();
+</script></body></html>
