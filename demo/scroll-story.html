@@ -151,10 +151,19 @@ body{overflow-x:clip}
  .story-copy h2{font-size:clamp(23px,5.7vw,29px)}
  .story-copy p{font-size:11px}
  .story-phone{width:min(210px,70vw);height:min(340px,100%)}
- .story-ui-title{font-size:16px}
- .story-panel{margin-top:6px;padding:8px}
+ .story-ui-top{font-size:9px}
+ .story-ui-title{font-size:15px;margin:4px 0 5px;line-height:1.08}
+ .story-chip{font-size:9px;padding:2px 7px}
+ .story-panel{margin-top:5px;padding:7px}
+ .story-panel-title{font-size:11px}
+ .story-body{font-size:10px;line-height:1.32;margin-top:4px}
+ .story-row{padding:5px 0}
+ .story-key,.story-value{font-size:10px}
  .story-candidate{padding:7px}
- .story-frame-layer{padding:10px}
+ .story-evidence{font-size:9px;padding:6px 0}
+ .story-path{font-size:9px;margin-top:6px}
+ .story-note{font-size:8px;margin-top:5px}
+ .story-frame-layer{padding:8px}
 }
 @media(max-width:365px){
  .story-copy h2{font-size:25px}
@@ -195,7 +204,7 @@ body{overflow-x:clip}
 <p><a href="/welcome">Open the existing PostgreSQL testing journey ↗</a></p>
 </section>
 </main></div>
-<template id="scene-0"><div class="story-ui-top">Incoming enquiry · website</div><div class="story-ui-title">Sam Lee</div><span class="story-chip">New message</span><div class="story-panel"><div class="story-panel-head"><span class="story-panel-title">Who owns our discussion?</span></div><p class="story-body">“Two people from your team contacted me. Can we continue the same conversation?”</p></div><div class="story-panel"><div class="story-row"><span class="story-key">Source</span><span class="story-value">Website form</span></div><div class="story-row"><span class="story-key">Original context</span><span class="story-value">Retained</span></div></div></template>
+<template id="scene-0"><div class="story-ui-top">Incoming enquiry · website</div><div class="story-ui-title">Sam Lee</div><span class="story-chip">New message</span><div class="story-panel"><div class="story-panel-head"><span class="story-panel-title">Who owns our discussion?</span></div><p class="story-body">“Two reps contacted me. Who owns our conversation?”</p></div><div class="story-panel"><div class="story-row"><span class="story-key">Source</span><span class="story-value">Website form</span></div><div class="story-row"><span class="story-key">Original context</span><span class="story-value">Retained</span></div></div></template>
 <template id="scene-1"><div class="story-ui-top">Identity candidates</div><div class="story-ui-title">A shared email isn't proof.</div><div class="story-candidates"><div class="story-candidate"><b>Studio North</b><small>Owner: Mia · previous quote</small><small>sam@example.com</small></div><div class="story-candidate"><b>Studio South</b><small>Owner: Luca · separate account</small><small>sam@example.com</small></div></div><div class="story-panel"><span class="story-panel-title">Do not merge automatically.</span><p class="story-body">Both links are plausible. The original enquiry stays intact.</p></div></template>
 <template id="scene-2"><div class="story-ui-top">Evidence before changes</div><div class="story-ui-title">What needs confirmation?</div><div class="story-panel"><div class="story-evidence"><span>North · previous quotation</span><strong>Found</strong></div><div class="story-evidence"><span>South · shared email</span><strong>Not identity proof</strong></div><div class="story-evidence"><span>Independent verification</span><strong>Required</strong></div></div><div class="story-panel"><span class="story-panel-title">Keep both people separate</span><p class="story-body">Ask the authorized reviewer to establish which customer the enquiry concerns.</p></div></template>
 <template id="scene-3"><div class="story-ui-top">Controlled delivery · example</div><div class="story-ui-title">Verified. Preserved. Logged.</div><span class="story-chip">Human-reviewed example</span><div class="story-panel"><div class="story-row"><span class="story-key">Selected customer</span><span class="story-value">Studio North</span></div><div class="story-row"><span class="story-key">Verification</span><span class="story-value">Independent callback</span></div><div class="story-row"><span class="story-key">Handoff</span><span class="story-value">One operation</span></div></div><div class="story-path"><span>Enquiry</span><i>→</i><span>Reviewer</span><i>→</i><span>CRM</span></div><div class="story-note">Fictional result. An uncertain delivery is reconciled rather than blindly repeated.</div></template>
