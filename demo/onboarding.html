@@ -291,8 +291,8 @@ async function execute(mode=''){
      message=$('message').value.trim();
    if(!name||!email||!message)throw Error('Enter the fictional name, email and enquiry.');
    const data=await api('/api/integrity/intakes',{method:'POST',body:JSON.stringify({
-    source:'website',sourceEventKey:pendingIntakeKey,
-    displayName:name,identifier:{kind:'email',value:email},context:{message},
+    source:'wizard-manual-test',sourceEventKey:pendingIntakeKey,
+    displayName:name,identifier:{kind:'email',value:email},context:{message,reportedChannels:answers.inbound},
     consentEvidenceRef:null
    })});
    pendingIntakeKey='wizard-'+crypto.randomUUID();
