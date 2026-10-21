@@ -10,6 +10,7 @@ import {SandboxCrmSimulator} from '../src/sales-integrity/sandbox-crm.js';
 import {PostgresSourceComparison} from '../src/sales-integrity/source-comparison.js';
 import sourceHtml from '../demo/source-comparison.html';
 import onboardingHtml from '../demo/onboarding.html';
+import scrollStoryHtml from '../demo/scroll-story.html';
 import html from '../demo/integrity.html';
 
 if(process.env.NODE_ENV!=='staging')throw Error('staging_only_runtime');
@@ -89,6 +90,8 @@ function guardDestination(v){
 }
 async function route(request){
  const url=new URL(request.url),path=url.pathname,method=request.method;
+ if(method==='GET'&&path==='/testing/story')
+  return new Response(scrollStoryHtml,{status:200,headers:{...headers,'content-type':'text/html; charset=utf-8'}});
  if(method==='GET'&&path==='/sources')
   return new Response(sourceHtml,{status:200,headers:{...headers,'content-type':'text/html; charset=utf-8'}});
  if(method==='GET'&&(path==='/'||path==='/welcome'))
