@@ -15,8 +15,12 @@ jobs:
         run: |
           curl --fail-with-body --retry 3 --retry-delay 3 --connect-timeout 20 -sS "$URL/healthz" | tee /tmp/health.json
           curl --fail-with-body --retry 3 --retry-delay 3 --connect-timeout 20 -sS "$URL/readyz" | tee /tmp/ready.json
-          curl --fail-with-body --retry 3 --retry-delay 3 --connect-timeout 20 -sS "$URL/" -o /tmp/deployed-intake.html
+          curl --fail-with-body --retry 3 --retry-delay 3 --connect-timeout 20 -sS "$URL/integrity" -o /tmp/deployed-intake.html
           cmp -s demo/integrity.html /tmp/deployed-intake.html
+          curl --fail-with-body --connect-timeout 20 -sS "$URL/" -o /tmp/deployed-onboarding.html
+          cmp -s demo/onboarding.html /tmp/deployed-onboarding.html
+          grep -q "Where does your customer information live?" /tmp/deployed-onboarding.html
+          echo "ONBOARDING FIRST, APPROVED MAIN VISUAL PRESERVED"
           echo "APPROVED MAIN VISUAL DEPLOYED EXACTLY"
           grep -q 'Follow one enquiry from receipt' /tmp/deployed-intake.html
           # Verify the current deployment serves the database-aware login page.
