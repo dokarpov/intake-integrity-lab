@@ -61,11 +61,19 @@ try{
     const textOpacity=Number(getComputedStyle(document.querySelector('[data-copy="'+n+'"]')).opacity);
     const frame=visible.getBoundingClientRect();
     const wrongWidth=document.documentElement.scrollWidth>innerWidth;
-    return {opacity,textOpacity,width:frame.width,height:frame.height,wrongWidth};
+    const layer=visible.querySelector('[data-layer="'+n+'"]');
+    const copy=document.querySelector('[data-copy="'+n+'"]');
+    const layerFits=layer.scrollHeight<=layer.clientHeight+3;
+    const copyFits=copy.scrollHeight<=copy.clientHeight+3;
+    return {opacity,textOpacity,width:frame.width,height:frame.height,wrongWidth,
+      layerFits,copyFits,layerOverflow:layer.scrollHeight-layer.clientHeight,
+      copyOverflow:copy.scrollHeight-copy.clientHeight};
    },expected);
    assert.ok(check.opacity>=.75 && check.textOpacity>=.75,'Wrong stage displayed at '+vp.width+' p='+p+': '+JSON.stringify(check));
    assert.ok(Math.abs(check.width-before.frame.width)<2&&Math.abs(check.height-before.frame.height)<2,'Mockup resized during scroll');
    assert.equal(check.wrongWidth,false,'Horizontal overflow mid-story');
+   assert.equal(check.layerFits,true,'Illustration clipped inside fixed frame at '+vp.width+' stage '+expected+': '+JSON.stringify(check));
+   assert.equal(check.copyFits,true,'Narrative clipped inside fixed scene at '+vp.width+' stage '+expected+': '+JSON.stringify(check));
   }
   assert.deepEqual(errors,[],'Page script errors');
   assert.deepEqual(unexpectedFetches,[],'Visual demo should not request user/customer data');
