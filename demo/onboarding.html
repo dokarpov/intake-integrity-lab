@@ -139,6 +139,7 @@ const $=id=>document.getElementById(id),tokenKey='intake-staging-access',choices
  {key:'crm',label:'Directly in the CRM'},
  {key:'import',label:'CSV / manual imports'}];
 let step=0,route='',token=sessionStorage.getItem(tokenKey)||'',uploaded={},answers={systems:[],inbound:[]};
+let pendingIntakeKey='wizard-'+crypto.randomUUID();
 const h=(tag,value,cls='')=>{const e=document.createElement(tag);e.textContent=String(value??'');if(cls)e.className=cls;return e};
 function status(msg,error=false){$('setup-status').textContent=msg;$('setup-status').classList.toggle('error',error)}
 function button(text,cls='secondary'){const e=h('button',text,cls);e.type='button';return e}
@@ -245,7 +246,7 @@ async function api(path,options={}){
 }
 async function ensureAuth(){
  try{await api('/api/me');return true}
- catch{$('auth-panel').hidden=false;$('auth-status').textContent='Connect your staging account before saving data.';return false}
+ catch{$('auth-panel').hidden=false;$('auth-status').textContent='Connect your staging account before saving data.';$('auth-panel').scrollIntoView({behavior:'smooth',block:'center'});return false}
 }
 const samples={
  '1c':[{sourceRecordId:'1C-100',sharedKey:'client-100',company:'Studio North',counterpartyType:'OOO',contactRef:'c1',ownerRef:'Mia',originalStatus:'Active'},
@@ -290,10 +291,11 @@ async function execute(mode=''){
      message=$('message').value.trim();
    if(!name||!email||!message)throw Error('Enter the fictional name, email and enquiry.');
    const data=await api('/api/integrity/intakes',{method:'POST',body:JSON.stringify({
-    source:'website',sourceEventKey:'wizard-'+crypto.randomUUID(),
+    source:'website',sourceEventKey:pendingIntakeKey,
     displayName:name,identifier:{kind:'email',value:email},context:{message},
     consentEvidenceRef:null
    })});
+   pendingIntakeKey='wizard-'+crypto.randomUUID();
    readyOutcome('Enquiry saved to PostgreSQL',
      'We checked the stored customer identifiers and kept possible matches separate. No CRM delivery was authorized.',
      data.candidateCount+' possible existing matches','/integrity','Inspect decision and history');
