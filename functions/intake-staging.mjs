@@ -9,6 +9,7 @@ import {SandboxDecisionEvidence} from '../src/sales-integrity/sandbox-evidence.j
 import {SandboxCrmSimulator} from '../src/sales-integrity/sandbox-crm.js';
 import {PostgresSourceComparison} from '../src/sales-integrity/source-comparison.js';
 import sourceHtml from '../demo/source-comparison.html';
+import onboardingHtml from '../demo/onboarding.html';
 import html from '../demo/integrity.html';
 
 if(process.env.NODE_ENV!=='staging')throw Error('staging_only_runtime');
@@ -90,7 +91,9 @@ async function route(request){
  const url=new URL(request.url),path=url.pathname,method=request.method;
  if(method==='GET'&&path==='/sources')
   return new Response(sourceHtml,{status:200,headers:{...headers,'content-type':'text/html; charset=utf-8'}});
- if(method==='GET'&&(path==='/'||path==='/integrity'))
+ if(method==='GET'&&(path==='/'||path==='/welcome'))
+  return new Response(onboardingHtml,{status:200,headers:{...headers,'content-type':'text/html; charset=utf-8'}});
+ if(method==='GET'&&path==='/integrity')
   return new Response(html,{status:200,headers:{...headers,'content-type':'text/html; charset=utf-8'}});
  if(method==='GET'&&path==='/healthz')return json({ok:true,service:'intake-integrity-staging',mode:'synthetic'});
  if(method==='GET'&&path==='/readyz'){
