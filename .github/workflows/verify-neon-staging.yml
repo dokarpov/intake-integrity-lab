@@ -23,8 +23,9 @@ jobs:
           echo "ONBOARDING FIRST, APPROVED MAIN VISUAL PRESERVED"
           echo "APPROVED MAIN VISUAL DEPLOYED EXACTLY"
           grep -q 'Follow one enquiry from receipt' /tmp/deployed-intake.html
-          # Verify the current deployment serves the database-aware login page.
-          curl --fail-with-body --connect-timeout 20 -sS "$URL/" | grep -q "api('/readyz')"
+          # New first-run screen asks about tools and channels before showing an action.
+          grep -q "Which systems store your customer records?" /tmp/deployed-onboarding.html
+          grep -q "Where do your new enquiries arrive?" /tmp/deployed-onboarding.html
           # New read-only source comparison page is served by the deployed Neon function.
           curl --fail-with-body --connect-timeout 20 -sS "$URL/sources" -o /tmp/deployed-source.html
           cmp -s demo/source-comparison.html /tmp/deployed-source.html
