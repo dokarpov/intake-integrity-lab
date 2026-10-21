@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { OidcJwtVerifier } from '../src/service/auth/oidc-verifier.js';
 import { Authenticator } from '../src/service/auth/authenticator.js';
 import { StagingAccessAuthenticator } from '../src/service/auth/staging-access.js';
+import { WorkspaceMembershipAuthenticator } from '../src/service/auth/workspace-membership.js';
 import { SlidingWindowRateLimiter } from '../src/service/http/rate-limit.js';
 import { ServicePolicyRegistry } from '../src/service/policies.js';
 import { TenantRuntimeRegistry } from '../src/service/runtime.js';
@@ -33,13 +34,21 @@ const config=configPath?loadJson(configPath):{
 if(process.env.NODE_ENV==='production'&&config.auth?.mode==='dev')throw new Error('dev_auth_forbidden_in_production');
 let verifier=null;if(config.auth?.mode==='oidc')verifier=new OidcJwtVerifier({issuer:config.auth.issuer,audience:config.auth.audience,jwksUri:config.auth.jwksUri});
 const stagingTokenAuth=process.env.NODE_ENV==='staging'&&process.env.STAGING_TOKEN_AUTH_ENABLED==='true';
-const authenticator=stagingTokenAuth
+const identityAuthenticator=stagingTokenAuth
   ?new StagingAccessAuthenticator({token:process.env.STAGING_ACCESS_TOKEN,tenantId:'staging-demo'})
   :new Authenticator({mode:config.auth?.mode||'oidc',verifier,claimOptions:{
     rolesClaim:config.auth?.rolesClaim,tenantClaim:config.auth?.tenantClaim,nameClaim:config.auth?.nameClaim
   }});
 let pool=null,mode='memory';if(process.env.DATABASE_URL){const {Pool}=await import('pg');pool=new Pool({connectionString:process.env.DATABASE_URL,max:Number(process.env.PG_POOL_MAX||10),statement_timeout:Number(process.env.PG_STATEMENT_TIMEOUT_MS||10000)});mode='postgres'}
 if(process.env.NODE_ENV==='production'&&!process.env.DATABASE_URL)throw new Error('DATABASE_URL_required_in_production');
+const workspaceMembershipEnforced=process.env.WORKSPACE_MEMBERSHIP_ENFORCED==='true';
+if(process.env.NODE_ENV==='production'&&!workspaceMembershipEnforced)
+  throw new Error('workspace_membership_enforcement_required_in_production');
+if(workspaceMembershipEnforced&&(!pool||config.auth?.mode!=='oidc'||stagingTokenAuth))
+  throw new Error('workspace_membership_requires_postgres_oidc');
+const authenticator=workspaceMembershipEnforced
+  ?new WorkspaceMembershipAuthenticator({authenticator:identityAuthenticator,pool})
+  :identityAuthenticator;
 let subjectRefProvider=null;if(process.env.AWS_KMS_HMAC_KEY_ID)subjectRefProvider=await AwsKmsHmacPseudonymizer.fromDefault({keyId:process.env.AWS_KMS_HMAC_KEY_ID,region:process.env.AWS_REGION});
 if(process.env.NODE_ENV==='production'&&!subjectRefProvider&&!process.env.SUBJECT_HMAC_SECRET)throw new Error('KMS_HMAC_or_SUBJECT_HMAC_SECRET_required_in_production');
 const runtimes=new TenantRuntimeRegistry({mode,pool,strictLedger:true,subjectRefProvider,subjectHmacSecret:process.env.SUBJECT_HMAC_SECRET||'local-dev-subject-hmac-change-me'});
