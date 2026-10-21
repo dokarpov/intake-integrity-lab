@@ -88,22 +88,27 @@ export class PostgresSourceComparison {
   if(!pool?.connect||!pool?.query)throw Error('postgres_pool_required');
   this.pool=pool;
  }
- async transaction(work){
+ async transaction(tenantId,work){
+  required(tenantId,'tenant_id');
   const c=await this.pool.connect();
   try{
    await c.query('BEGIN');
+   await c.query("SELECT set_config('intake.tenant_id',$1,true)",[tenantId]);
    await c.query("SET LOCAL lock_timeout='5s'");
    const output=await work(c);
    await c.query('COMMIT');return output;
   }catch(e){try{await c.query('ROLLBACK')}catch{}throw e}
   finally{c.release()}
  }
+ async queryAsTenant(tenantId,sql,params){
+  return this.transaction(tenantId,c=>c.query(sql,params));
+ }
  async importSnapshot({tenantId,source,importKey,actorRef,rows}={}){
   required(tenantId,'tenant_id');required(actorRef,'actor_ref');
   if(!['1c','bitrix24'].includes(source))throw Error('unsupported_source');
   required(importKey,'import_key',160);
   const normalized=normalizeSnapshotRows(rows),digest=hash([source,normalized]);
-  return this.transaction(async c=>{
+  return this.transaction(tenantId,async c=>{
    const snapshotId=randomUUID();
    const inserted=await c.query(`INSERT INTO sales_source_snapshots
     (tenant_id,snapshot_id,source,import_key,content_sha256,policy_version,record_count,actor_ref)
@@ -134,7 +139,7 @@ export class PostgresSourceComparison {
  }
  async latest({tenantId}={}){
   required(tenantId,'tenant_id');
-  const q=await this.pool.query(`SELECT DISTINCT ON(source)
+  const q=await this.queryAsTenant(tenantId,`SELECT DISTINCT ON(source)
     snapshot_id,source,import_key,record_count,created_at
     FROM sales_source_snapshots WHERE tenant_id=$1
     ORDER BY source,created_at DESC,snapshot_id DESC`,[tenantId]);
@@ -143,7 +148,7 @@ export class PostgresSourceComparison {
  }
  async compareLatest({tenantId,actorRef}={}){
   required(tenantId,'tenant_id');required(actorRef,'actor_ref');
-  return this.transaction(async c=>{
+  return this.transaction(tenantId,async c=>{
    const q=await c.query(`SELECT DISTINCT ON(source)
       snapshot_id,source,import_key,created_at
       FROM sales_source_snapshots WHERE tenant_id=$1
@@ -179,7 +184,7 @@ export class PostgresSourceComparison {
  }
  async latestComparison({tenantId}={}){
   required(tenantId,'tenant_id');
-  const q=await this.pool.query(`SELECT comparison_id,onec_snapshot_id,bitrix_snapshot_id,
+  const q=await this.queryAsTenant(tenantId,`SELECT comparison_id,onec_snapshot_id,bitrix_snapshot_id,
     policy_version,result_json,created_at FROM sales_source_comparisons
     WHERE tenant_id=$1 ORDER BY created_at DESC,comparison_id DESC LIMIT 1`,[tenantId]);
   const r=q.rows[0];if(!r)return null;
@@ -194,7 +199,7 @@ export class PostgresSourceComparison {
    throw Error('assessment_choice_invalid');
   required(reason,'assessment_reason',1000);
   if(reason.trim().length<10)throw Error('assessment_reason_too_short');
-  return this.transaction(async c=>{
+  return this.transaction(tenantId,async c=>{
    const id=randomUUID(),r=await c.query(`INSERT INTO sales_source_assessments
     (tenant_id,assessment_id,comparison_id,assessment_key,actor_ref,assessment,reason)
     VALUES($1,$2,$3,$4,$5,$6,$7)
@@ -216,7 +221,7 @@ export class PostgresSourceComparison {
  }
  async assessments({tenantId,comparisonId}={}){
   required(tenantId,'tenant_id');required(comparisonId,'comparison_id');
-  const q=await this.pool.query(`SELECT assessment_id,actor_ref,assessment,reason,created_at
+  const q=await this.queryAsTenant(tenantId,`SELECT assessment_id,actor_ref,assessment,reason,created_at
    FROM sales_source_assessments WHERE tenant_id=$1 AND comparison_id=$2
    ORDER BY created_at,assessment_id`,[tenantId,comparisonId]);
   return q.rows.map(x=>({assessmentId:x.assessment_id,actorRef:x.actor_ref,
