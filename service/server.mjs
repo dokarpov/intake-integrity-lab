@@ -71,9 +71,16 @@ const api=createApiHandler({
 const consoleHtml=readFileSync(resolve(root,'demo/index.html'),'utf8');
 const integrityTestHtml=integrityEnabled?readFileSync(resolve(root,'demo/integrity.html'),'utf8'):null;
 const onboardingTestHtml=integrityEnabled?readFileSync(resolve(root,'demo/onboarding.html'),'utf8'):null;
+const scrollStoryHtml=integrityEnabled?readFileSync(resolve(root,'demo/scroll-story.html'),'utf8'):null;
 const sourceTestHtml=integrityEnabled?readFileSync(resolve(root,'demo/source-comparison.html'),'utf8'):null;
 const server=createServer(async(req,res)=>{
   if(req.method==='GET'&&(req.url==='/'||req.url==='/console')){res.writeHead(200,{'content-type':'text/html; charset=utf-8','cache-control':'no-store','content-security-policy':"default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",'x-frame-options':'DENY','x-content-type-options':'nosniff','referrer-policy':'no-referrer'});return res.end(consoleHtml)}
+  if(req.method==='GET'&&req.url==='/testing/story'&&scrollStoryHtml){
+    res.writeHead(200,{'content-type':'text/html; charset=utf-8','cache-control':'no-store',
+      'content-security-policy':"default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+      'x-frame-options':'DENY','x-content-type-options':'nosniff','referrer-policy':'no-referrer'});
+    return res.end(scrollStoryHtml);
+  }
   if(req.method==='GET'&&req.url==='/welcome'&&onboardingTestHtml){
     res.writeHead(200,{'content-type':'text/html; charset=utf-8','cache-control':'no-store',
       'content-security-policy':"default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
