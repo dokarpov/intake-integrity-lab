@@ -6,6 +6,7 @@ on:
       - 'functions/intake-staging.mjs'
       - 'demo/integrity.html'
       - 'demo/source-comparison.html'
+      - 'demo/onboarding.html'
       - 'src/sales-integrity/**'
       - '.github/workflows/neon-function-bundle.yml'
   workflow_dispatch:
