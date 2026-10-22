@@ -18,7 +18,7 @@
     "db:migrate:staging": "node scripts/migrate-staging.mjs --apply",
     "db:seed:staging": "node scripts/seed-staging.mjs",
     "test:unit": "node --test tests/*.test.js",
-    "test:integration:postgres": "node --test --test-concurrency=1 tests/integration/postgres.live.test.js tests/integration/sales-integrity.live.test.js tests/integration/source-comparison.live.test.js tests/integration/workspace-membership.live.test.js tests/integration/source-rls.live.test.js",
+    "test:integration:postgres": "node --test --test-concurrency=1 tests/integration/postgres.live.test.js tests/integration/sales-integrity.live.test.js tests/integration/source-comparison.live.test.js tests/integration/workspace-membership.live.test.js tests/integration/source-rls.live.test.js tests/integration/core-tenant-rls.live.test.js",
     "test:integration:aws": "node --test tests/integration/aws.live.test.js",
     "test:integration:one-c": "node --test tests/integration/one-c.live.test.js",
     "test:integration": "node --test tests/integration/*.live.test.js",
