@@ -1,6 +1,6 @@
 # Intake Integrity — production delivery plan
 **Baseline:** 22 October 2026 · **Status:** DRAFT / release NOT authorized · **Scope:** Intake SaaS, public Site and authenticated Lab.  
-**Source of truth:** [independent audit #10](https://github.com/dokarpov/intake-integrity-lab/issues/10) + [original blockers #6](https://github.com/dokarpov/intake-integrity-lab/issues/6) + [approved cross-repo contract](CROSS_REPO_RELEASE_AUDIT_2026-10-18.md). Execution work is tracked in [#11–#22](https://github.com/dokarpov/intake-integrity-lab/issues?q=is%3Aissue+is%3Aopen+label%3Aproduction) (issues are titled by priority; labels are not yet applied).
+**Source of truth:** [independent audit #10](https://github.com/dokarpov/intake-integrity-lab/issues/10) + [original blockers #6](https://github.com/dokarpov/intake-integrity-lab/issues/6) + [approved cross-repo contract](CROSS_REPO_RELEASE_AUDIT_2026-10-18.md). Execution work is tracked in [#11–#23](https://github.com/dokarpov/intake-integrity-lab/issues); issues are titled by priority, and #23 is immediate containment.
 
 ## 0. Non-negotiable product contract
 **Intake Integrity is not a CRM, social-listening tool, generic approval dashboard, or another compulsory daily inbox.** It guards an existing sales workflow:
@@ -16,6 +16,7 @@
 ## 1. Executable, dependency-ordered backlog
 | Epic | Work | Depends on | Acceptance evidence |
 | --- | --- | --- | --- |
+| [#23](https://github.com/dokarpov/intake-integrity-lab/issues/23) | **Immediate containment**: synthetic-only staging and shared-token/data inventory, disable arbitrary personal-data uploads and rotate credentials | — | Synthetic demo survives; no unapproved customer-data ingress; token/access audit and safe remediation evidence |
 | [#11](https://github.com/dokarpov/intake-integrity-lab/issues/11) | **Architecture reconciliation**: single canonical envelope, endpoints/tables/workers, migrations, staged PR #1 decision, old/new coexistence | — | One signed-off architecture decision; complete map of old/v2 routes; no lost review/delivery flow |
 | [#12](https://github.com/dokarpov/intake-integrity-lab/issues/12) | **Flow integrity**: clear auto-delivery, durable pending envelope, bounded human exception, atomic audit/outbox/reconciliation | #11; #16, #15 contracts | Clear/ambiguous/denied/replay/crash/concurrency/provider-loss scenarios pass, no unsafe side effect |
 | [#13](https://github.com/dokarpov/intake-integrity-lab/issues/13) | **Real identity lifecycle**: IdP, login, invites, joining, role changes, sessions, MFA, recovery, BFF | #11; #14 | Multi-user/provider live sandbox E2E; issuer+subject collision fixed; revoke immediate |
@@ -42,7 +43,7 @@ Each PR/issue must specify: business scenario, untrusted inputs/threats, state t
 
 | Gate | Allowed activity | Must be demonstrably true | Not allowed |
 | --- | --- | --- | --- |
-| **G0 — Product contract** | Research, doc/architecture and synthetic testing | #11 architecture + acceptance scenario matrix + current-path inventory; issue and PR ownership | Source/real customer data, live release |
+| **G0 — Product contract** | Research, doc/architecture and synthetic testing | #23 staging containment + #11 architecture + acceptance scenario matrix + current-path inventory; issue and PR ownership | Source/real customer data, live release |
 | **G1 — Synthetic vertical slice** | Real Postgres/HTTP/worker E2E with fictional providers | Clear + ambiguous + denied + replay + unknown-ack + recovery integrated; approved story UI; no internal leaks | Real customer imports, source writes |
 | **G2 — Security-complete sandbox** | Signed external IdP sandbox and restricted DB tests | #13, #14; sessions/revocation, RLS **all** tenant surfaces, account lifecycle, quotas, crypto, negative E2E; #18 policies drafted | Shared-token customer onboarding; production |
 | **G3 — Permissioned read-only pilot** | Small real provider/test customer dataset **only** in a separate secured tenancy after approval | G1+G2, #15 authorized real read-only 1C/Bitrix mappings, #16 verified evidence, DPA/retention and erasure, #17 operator UX, monitoring/support and explicit pilot signoff | Any source writeback/automatic merge, unapproved claims of value |
@@ -63,7 +64,7 @@ Each PR/issue must specify: business scenario, untrusted inputs/threats, state t
 Every line of the matrix must link to a runnable test or an explicitly recorded external observation. Test failures and skipped provider environments are never reported as full release proof.
 
 ## 4. Engineering workflow / decision governance
-1. Start with a G0 single-architecture and acceptance decision. Use a pilot scenario trace (one source event and one explicit decision) as executable reference.
+1. Contain shared staging per #23, then start with a G0 single-architecture and acceptance decision. Use a pilot scenario trace (one source event and one explicit decision) as executable reference.
 2. Short vertical slices: *schema + API + UI/host handoff + provider contract + observability + failure tests* together. No more database-only phases described as complete onboarding.
 3. Each PR is a draft with dependencies, risk review, exact commit CI, adversarial cases, browser visual checks where UI changes, a rollback plan and feature flag; use synthetic data and a restricted role. Preserve design lock; get explicit approval for design changes.
 4. Review compatibility across both repos and the deployment pipeline. Do not promote a site PR merely because its CI passed independently of the app.
