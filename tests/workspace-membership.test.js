@@ -39,7 +39,7 @@ test('missing, disabled or suspended membership fails closed',async()=>{
 });
 test('role escalation and malformed directory rows are refused',async()=>{
  p=principal();
- for(const roles of [[],['owner'],['reviewer','reviewer'],['auditor','superadmin'],null]){
+ for(const roles of [[],['root_owner'],['reviewer','reviewer'],['auditor','superadmin'],null]){
   const auth=new WorkspaceMembershipAuthenticator({authenticator:subject(p),pool:directory(roles)});
   await assert.rejects(()=>auth.authenticate({}),e=>e.statusCode===403);
  }

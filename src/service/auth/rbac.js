@@ -1,10 +1,13 @@
 export const SERVICE_ROLE=Object.freeze({
+  OWNER:'owner', ADMIN:'admin',
   SALES:'sales', REVIEWER:'reviewer', REVIEW_MANAGER:'review_manager',
   AUDITOR:'auditor', DPO:'dpo', SECURITY_ADMIN:'security_admin',
   POLICY_ADMIN:'policy_admin', INTEGRATION_ADMIN:'integration_admin'
 });
 
 const P={
+  [SERVICE_ROLE.OWNER]:['workspace.manage','workspace.membership.manage'],
+  [SERVICE_ROLE.ADMIN]:['workspace.manage','workspace.membership.manage'],
   [SERVICE_ROLE.SALES]:['intake.submit','intake.read'],
   [SERVICE_ROLE.REVIEWER]:['review.read','review.claim','review.resolve'],
   [SERVICE_ROLE.REVIEW_MANAGER]:['review.read','review.claim','review.resolve','review.assign','review.bulk_assign','review.capacity'],
