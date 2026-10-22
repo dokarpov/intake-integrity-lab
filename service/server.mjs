@@ -6,6 +6,8 @@ import { OidcJwtVerifier } from '../src/service/auth/oidc-verifier.js';
 import { Authenticator } from '../src/service/auth/authenticator.js';
 import { StagingAccessAuthenticator } from '../src/service/auth/staging-access.js';
 import { WorkspaceMembershipAuthenticator } from '../src/service/auth/workspace-membership.js';
+import { WorkspaceBootstrap } from '../src/service/auth/workspace-bootstrap.js';
+import { createWorkspaceRegistrationHandler } from '../src/service/auth/workspace-registration-http.js';
 import { SlidingWindowRateLimiter } from '../src/service/http/rate-limit.js';
 import { ServicePolicyRegistry } from '../src/service/policies.js';
 import { TenantRuntimeRegistry } from '../src/service/runtime.js';
@@ -53,6 +55,15 @@ let subjectRefProvider=null;if(process.env.AWS_KMS_HMAC_KEY_ID)subjectRefProvide
 if(process.env.NODE_ENV==='production'&&!subjectRefProvider&&!process.env.SUBJECT_HMAC_SECRET)throw new Error('KMS_HMAC_or_SUBJECT_HMAC_SECRET_required_in_production');
 const runtimes=new TenantRuntimeRegistry({mode,pool,strictLedger:true,subjectRefProvider,subjectHmacSecret:process.env.SUBJECT_HMAC_SECRET||'local-dev-subject-hmac-change-me'});
 const policies=new ServicePolicyRegistry(config.policies);const limiter=new SlidingWindowRateLimiter({limit:Number(process.env.RATE_LIMIT_PER_MINUTE||120)});
+const workspaceSelfSignupEnabled=process.env.WORKSPACE_SELF_SIGNUP_ENABLED==='true';
+if(workspaceSelfSignupEnabled&&
+   (!workspaceMembershipEnforced||!pool||!verifier||stagingTokenAuth||
+    config.auth?.mode!=='oidc'||process.env.NODE_ENV==='staging'))
+  throw new Error('workspace_self_signup_requires_verified_oidc_and_membership');
+const workspaceRegistration=workspaceSelfSignupEnabled
+  ?createWorkspaceRegistrationHandler({
+     verifier,bootstrap:new WorkspaceBootstrap({pool}),rateLimiter:limiter
+   }):null;
 const oneCConfig=process.env.ONE_C_CONFIG_FILE?loadJson(process.env.ONE_C_CONFIG_FILE):null;
 const identityResolver=process.env.IDENTITY_RESOLVER_CONFIG_FILE?new HttpIdentityResolver(loadJson(process.env.IDENTITY_RESOLVER_CONFIG_FILE)):null;
 // New transactional intake backend is intentionally disabled by default.
@@ -83,6 +94,8 @@ const onboardingTestHtml=integrityEnabled?readFileSync(resolve(root,'demo/onboar
 const scrollStoryHtml=integrityEnabled?readFileSync(resolve(root,'demo/scroll-story.html'),'utf8'):null;
 const sourceTestHtml=integrityEnabled?readFileSync(resolve(root,'demo/source-comparison.html'),'utf8'):null;
 const server=createServer(async(req,res)=>{
+  if(req.method==='POST'&&req.url==='/api/workspaces/registration'&&workspaceRegistration)
+    return workspaceRegistration(req,res);
   if(req.method==='GET'&&(req.url==='/'||req.url==='/console')){res.writeHead(200,{'content-type':'text/html; charset=utf-8','cache-control':'no-store','content-security-policy':"default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",'x-frame-options':'DENY','x-content-type-options':'nosniff','referrer-policy':'no-referrer'});return res.end(consoleHtml)}
   if(req.method==='GET'&&req.url==='/testing/story'&&scrollStoryHtml){
     res.writeHead(200,{'content-type':'text/html; charset=utf-8','cache-control':'no-store',
