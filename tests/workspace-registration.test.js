@@ -7,7 +7,7 @@ import {permissionsFor} from '../src/service/auth/rbac.js';
 
 const verified={sub:'sub-123',iss:'https://login.example',email_verified:true};
 function request({bearer='Bearer test',body={displayName:'Example Studio'},contentType='application/json'}={}){
- const req=Readable.from([JSON.stringify(body)]);
+ const req=Readable.from([Buffer.from(JSON.stringify(body))]);
  req.headers={'authorization':bearer,'content-type':contentType};
  req.socket={remoteAddress:'127.0.0.1'};
  return req;
