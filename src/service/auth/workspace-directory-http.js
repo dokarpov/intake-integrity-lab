@@ -16,7 +16,7 @@ export function createWorkspaceDirectoryHandler({directory,rateLimiter}={}){
    return sendJson(res,200,{items},{requestId});
   }catch(e){
    const status=e.statusCode||500;
-   return sendJson(res,status,errorBody(e,requestId),{requestId});
+   return sendJson(res,status,errorBody(status>=500?{statusCode:500,code:'internal_error'}:e,requestId),{requestId});
   }
  };
 }
