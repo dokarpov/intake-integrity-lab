@@ -91,3 +91,15 @@ test('workspace listing rejects missing credentials and returns 200 for signed m
  const bad=await run(null);
  assert.equal(bad.status,401);
 });
+
+test('workspace directory masks database diagnostics when a backend fails',async()=>{
+ const handler=createWorkspaceDirectoryHandler({directory:{
+  listForRequest:async()=>{throw Error('SQL: private schema tokens and customer data')}
+ }});
+ const r={headers:{},writeHead(n){this.status=n},end(s){this.body=JSON.parse(s)}};
+ await handler({headers:{authorization:'Bearer valid'},socket:{remoteAddress:'127.0.0.1'}},r);
+ assert.equal(r.status,500);
+ assert.equal(r.body.error.code,'internal_error');
+ assert.equal(r.body.error.message,'Internal server error');
+ assert.doesNotMatch(JSON.stringify(r.body),/SQL|private schema|customer data/);
+});
