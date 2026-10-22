@@ -53,16 +53,24 @@ export class PostgresSalesIntegrity {
     return createHmac('sha256',this.secret).update(
       canonical([required(tenantId,'tenant_id'),kind,normalize(kind,value)])).digest('hex');
   }
-  async transaction(fn){
+  async transaction(tenantId,fn){
+    required(tenantId,'tenant_id');
     const c=await this.pool.connect();
     try{
       await c.query('BEGIN');
+      // Transaction local: never reuse tenant context from a pooled connection.
+      // The caller tenant is derived from verified API membership or an
+      // authenticated server-owned worker job, not browser JSON.
+      await c.query("SELECT set_config('intake.tenant_id',$1,true)",[tenantId]);
       await c.query("SET LOCAL lock_timeout = '5s'");
       const result=await fn(c);
       await c.query('COMMIT');
       return result;
     }catch(e){try{await c.query('ROLLBACK')}catch{}throw e}
     finally{c.release()}
+  }
+  async queryAsTenant(tenantId,sql,params){
+    return this.transaction(tenantId,c=>c.query(sql,params));
   }
   // Every caller must lock the parent intake row (or own its new insertion).
   async auditIntake(c,{tenantId,intakeId,actorId,action,metadata={}}){
@@ -95,7 +103,7 @@ export class PostgresSalesIntegrity {
     required(tenantId,'tenant_id');required(name,'name',200);
     required(sourceRef,'source_ref');required(evidenceRef,'evidence_ref');required(actorId,'actor_id');
     const fingerprint=this.fingerprint(tenantId,kind,value),personId=uuid();
-    return this.transaction(async c=>{
+    return this.transaction(tenantId,async c=>{
       await c.query('INSERT INTO sales_identity_people(tenant_id,person_id,display_name) VALUES($1,$2,$3)',
         [tenantId,personId,name.trim()]);
       await c.query(`INSERT INTO sales_person_identifiers
@@ -114,7 +122,7 @@ export class PostgresSalesIntegrity {
     const kind=identifier.kind,fingerprint=this.fingerprint(tenantId,kind,identifier.value);
     const digest=hash(canonical({source,sourceEventKey,displayName,kind,fingerprint,context,consentEvidenceRef}));
     const intakeId=uuid();
-    return this.transaction(async c=>{
+    return this.transaction(tenantId,async c=>{
       const insert=await c.query(`INSERT INTO sales_incoming_enquiries
         (tenant_id,intake_id,source,source_event_key,payload_digest,contact_kind,contact_fingerprint,
          display_name,context_json,consent_evidence_ref)
@@ -158,7 +166,7 @@ export class PostgresSalesIntegrity {
   async listIntakes({tenantId,limit=50}={}){
     required(tenantId,'tenant_id');
     if(!Number.isInteger(limit)||limit<1||limit>100)throw new Error('invalid_list_limit');
-    const q=await this.pool.query(
+    const q=await this.queryAsTenant(tenantId,
       `SELECT i.intake_id,i.display_name,i.source,i.source_event_key,
         i.processing_state,i.created_at,
         (SELECT count(*)::int FROM sales_intake_candidates c
@@ -183,7 +191,7 @@ export class PostgresSalesIntegrity {
   }
   async getIntake({tenantId,intakeId}={}){
     required(tenantId,'tenant_id');required(intakeId,'intake_id');
-    const q=await this.pool.query(
+    const q=await this.queryAsTenant(tenantId,
       `SELECT i.intake_id,i.display_name,i.source,i.source_event_key,
         i.context_json,i.processing_state,i.consent_evidence_ref,i.created_at,
         d.action AS decision_action,d.person_id AS selected_person_id,
@@ -210,7 +218,7 @@ export class PostgresSalesIntegrity {
   async listPeople({tenantId,limit=100}={}){
     required(tenantId,'tenant_id');
     if(!Number.isInteger(limit)||limit<1||limit>100)throw new Error('invalid_list_limit');
-    const q=await this.pool.query(
+    const q=await this.queryAsTenant(tenantId,
       `SELECT p.person_id,p.display_name,p.created_at,
         count(i.identifier_id)::int AS identifier_count
        FROM sales_identity_people p LEFT JOIN sales_person_identifiers i
@@ -225,7 +233,7 @@ export class PostgresSalesIntegrity {
 
   async candidates({tenantId,intakeId}){
     required(tenantId,'tenant_id');required(intakeId,'intake_id');
-    const q=await this.pool.query(`SELECT p.person_id,p.display_name,c.match_reasons
+    const q=await this.queryAsTenant(tenantId,`SELECT p.person_id,p.display_name,c.match_reasons
       FROM sales_intake_candidates c
       JOIN sales_identity_people p ON p.tenant_id=c.tenant_id AND p.person_id=c.person_id
       WHERE c.tenant_id=$1 AND c.intake_id=$2 ORDER BY p.display_name,p.person_id`,
@@ -243,7 +251,7 @@ export class PostgresSalesIntegrity {
     if(action!=='discard')required(destination,'destination');
     const digest=hash(canonical({intakeId,action,personId,actorId,reason,
       identityEvidenceRef,consentEvidenceRef,policyVersion,destination}));
-    return this.transaction(async c=>{
+    return this.transaction(tenantId,async c=>{
       const q=await c.query(
         'SELECT * FROM sales_incoming_enquiries WHERE tenant_id=$1 AND intake_id=$2 FOR UPDATE',
         [tenantId,intakeId]);
@@ -318,7 +326,7 @@ export class PostgresSalesIntegrity {
     if(!['colleague','household','authorized_representative','same_organization','other'].includes(relationType))
       throw new Error('relationship_type_not_supported');
     if(fromPersonId===toPersonId)throw new Error('relationship_requires_two_people');
-    return this.transaction(async c=>{
+    return this.transaction(tenantId,async c=>{
       const intake=await c.query(
         'SELECT intake_id FROM sales_incoming_enquiries WHERE tenant_id=$1 AND intake_id=$2 FOR UPDATE',
         [tenantId,intakeId]);
@@ -347,7 +355,7 @@ export class PostgresSalesIntegrity {
     if(!Number.isInteger(limit)||limit<1||limit>100)throw new Error('invalid_claim_limit');
     if(!Number.isInteger(leaseSeconds)||leaseSeconds<30||leaseSeconds>900)
       throw new Error('invalid_lease_seconds');
-    return this.transaction(async c=>{
+    return this.transaction(tenantId,async c=>{
       const q=await c.query(`SELECT * FROM sales_crm_outbox_v2
         WHERE tenant_id=$1 AND destination=$2 AND state IN ('pending','retry')
           AND next_attempt_at<=clock_timestamp()
@@ -373,7 +381,7 @@ export class PostgresSalesIntegrity {
   async expireUnacknowledged({tenantId,actorId='lease-reaper',limit=50}){
     required(tenantId,'tenant_id');required(actorId,'actor_id');
     if(!Number.isInteger(limit)||limit<1||limit>100)throw new Error('invalid_claim_limit');
-    return this.transaction(async c=>{
+    return this.transaction(tenantId,async c=>{
       const due=await c.query(`SELECT outbox_id FROM sales_crm_outbox_v2
         WHERE tenant_id=$1 AND state='claimed' AND lease_until<clock_timestamp()
         ORDER BY lease_until LIMIT $2 FOR UPDATE SKIP LOCKED`,
@@ -397,7 +405,7 @@ export class PostgresSalesIntegrity {
       required(externalRecordRef,'external_record_ref');
       required(receiptRef,'receipt_ref');
     }
-    return this.transaction(async c=>{
+    return this.transaction(tenantId,async c=>{
       const q=await c.query(
         'SELECT * FROM sales_crm_outbox_v2 WHERE tenant_id=$1 AND outbox_id=$2 FOR UPDATE',
         [tenantId,outboxId]);
@@ -422,7 +430,7 @@ export class PostgresSalesIntegrity {
     for(const [k,v] of Object.entries({tenantId,outboxId,actorId,evidenceRef}))required(v,k);
     if(!['found','confirmed_absent'].includes(result))throw new Error('invalid_reconciliation_result');
     if(result==='found')required(externalRecordRef,'external_record_ref');
-    return this.transaction(async c=>{
+    return this.transaction(tenantId,async c=>{
       const q=await c.query(
         'SELECT * FROM sales_crm_outbox_v2 WHERE tenant_id=$1 AND outbox_id=$2 FOR UPDATE',
         [tenantId,outboxId]);
@@ -444,7 +452,7 @@ export class PostgresSalesIntegrity {
   }
   async history({tenantId,intakeId}){
     required(tenantId,'tenant_id');required(intakeId,'intake_id');
-    const q=await this.pool.query(`SELECT sequence,event_id,previous_hash,event_hash,action,actor_id,
+    const q=await this.queryAsTenant(tenantId,`SELECT sequence,event_id,previous_hash,event_hash,action,actor_id,
       metadata_json,created_at FROM sales_intake_audit_events
       WHERE tenant_id=$1 AND intake_id=$2 ORDER BY sequence`,[tenantId,intakeId]);
     let prev=null;let n=0;
@@ -461,7 +469,7 @@ export class PostgresSalesIntegrity {
   }
   async relationshipsFor({tenantId,personId}){
     required(tenantId,'tenant_id');required(personId,'person_id');
-    const q=await this.pool.query(`SELECT relation_id,from_person_id,to_person_id,relation_type,
+    const q=await this.queryAsTenant(tenantId,`SELECT relation_id,from_person_id,to_person_id,relation_type,
       intake_id,asserted_by,evidence_ref,created_at
       FROM sales_person_relationships
       WHERE tenant_id=$1 AND (from_person_id=$2 OR to_person_id=$2)
@@ -472,7 +480,7 @@ export class PostgresSalesIntegrity {
   }
   async deliveryHistory({tenantId,outboxId}){
     required(tenantId,'tenant_id');required(outboxId,'outbox_id');
-    const q=await this.pool.query(`SELECT sequence,action,actor_id,details_json,created_at
+    const q=await this.queryAsTenant(tenantId,`SELECT sequence,action,actor_id,details_json,created_at
       FROM sales_crm_outbox_events
       WHERE tenant_id=$1 AND outbox_id=$2 ORDER BY sequence`,[tenantId,outboxId]);
     return q.rows.map(r=>({sequence:Number(r.sequence),action:r.action,
@@ -480,7 +488,7 @@ export class PostgresSalesIntegrity {
   }
   async outboxForIntake({tenantId,intakeId}){
     required(tenantId,'tenant_id');required(intakeId,'intake_id');
-    const q=await this.pool.query(`SELECT outbox_id,destination,operation_key,state,attempts,
+    const q=await this.queryAsTenant(tenantId,`SELECT outbox_id,destination,operation_key,state,attempts,
       external_record_ref,receipt_ref FROM sales_crm_outbox_v2
       WHERE tenant_id=$1 AND intake_id=$2 ORDER BY created_at`,[tenantId,intakeId]);
     return q.rows;
