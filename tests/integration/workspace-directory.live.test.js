@@ -46,7 +46,7 @@ test('LIVE PostgreSQL only verified membership authorizes workspace selection; d
    await admin.query('UPDATE intake_workspaces SET status=$1 WHERE tenant_id=$2',['suspended',b]);
    assert.deepEqual(await directory.listForRequest(request()),[]);
    await assert.rejects(()=>directory.authenticate(request(b)),forbidden);
-   await assert.rejects(()=>readonly.query('UPDATE intake_workspace_memberships SET status=$1'),e=>e.code==='42501');
+   await assert.rejects(()=>readonly.query('UPDATE intake_workspace_memberships SET status=$1',['active']),e=>e.code==='42501');
    await assert.rejects(()=>readonly.query('INSERT INTO intake_workspaces(tenant_id,display_name) VALUES($1,$2)',[randomUUID(),'Injected']),e=>e.code==='42501');
   }finally{if(readonly)await readonly.end();await admin.end()}
  });
