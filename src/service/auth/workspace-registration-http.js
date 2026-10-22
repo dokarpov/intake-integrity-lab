@@ -23,7 +23,7 @@ export function createWorkspaceRegistrationHandler({verifier,bootstrap,rateLimit
    return sendJson(res,result.replayed?200:201,result,{requestId});
   }catch(error){
    const status=error.statusCode||500;
-   return sendJson(res,status,errorBody(error,requestId),{requestId});
+   return sendJson(res,status,errorBody(status>=500?{statusCode:500,code:'internal_error'}:error,requestId),{requestId});
   }
  };
 }

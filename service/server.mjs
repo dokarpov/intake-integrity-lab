@@ -6,6 +6,8 @@ import { OidcJwtVerifier } from '../src/service/auth/oidc-verifier.js';
 import { Authenticator } from '../src/service/auth/authenticator.js';
 import { StagingAccessAuthenticator } from '../src/service/auth/staging-access.js';
 import { WorkspaceMembershipAuthenticator } from '../src/service/auth/workspace-membership.js';
+import { VerifiedWorkspaceDirectoryAuthenticator } from '../src/service/auth/workspace-directory.js';
+import { createWorkspaceDirectoryHandler } from '../src/service/auth/workspace-directory-http.js';
 import { WorkspaceBootstrap } from '../src/service/auth/workspace-bootstrap.js';
 import { createWorkspaceRegistrationHandler } from '../src/service/auth/workspace-registration-http.js';
 import { SlidingWindowRateLimiter } from '../src/service/http/rate-limit.js';
@@ -48,13 +50,25 @@ if(process.env.NODE_ENV==='production'&&!workspaceMembershipEnforced)
   throw new Error('workspace_membership_enforcement_required_in_production');
 if(workspaceMembershipEnforced&&(!pool||config.auth?.mode!=='oidc'||stagingTokenAuth))
   throw new Error('workspace_membership_requires_postgres_oidc');
-const authenticator=workspaceMembershipEnforced
-  ?new WorkspaceMembershipAuthenticator({authenticator:identityAuthenticator,pool})
-  :identityAuthenticator;
+const workspaceDirectoryEnabled=process.env.WORKSPACE_DIRECTORY_AUTH_ENABLED==='true';
+if(process.env.NODE_ENV==='production'&&!workspaceDirectoryEnabled)
+  throw new Error('verified_workspace_directory_auth_required_in_production');
+if(workspaceDirectoryEnabled&&(!workspaceMembershipEnforced||!pool||!verifier||
+   config.auth?.mode!=='oidc'||stagingTokenAuth))
+  throw new Error('workspace_directory_requires_oidc_and_membership');
+const directoryAuthenticator=workspaceDirectoryEnabled
+  ?new VerifiedWorkspaceDirectoryAuthenticator({verifier,pool}):null;
+const authenticator=workspaceDirectoryEnabled
+  ?directoryAuthenticator
+  :workspaceMembershipEnforced
+    ?new WorkspaceMembershipAuthenticator({authenticator:identityAuthenticator,pool})
+    :identityAuthenticator;
 let subjectRefProvider=null;if(process.env.AWS_KMS_HMAC_KEY_ID)subjectRefProvider=await AwsKmsHmacPseudonymizer.fromDefault({keyId:process.env.AWS_KMS_HMAC_KEY_ID,region:process.env.AWS_REGION});
 if(process.env.NODE_ENV==='production'&&!subjectRefProvider&&!process.env.SUBJECT_HMAC_SECRET)throw new Error('KMS_HMAC_or_SUBJECT_HMAC_SECRET_required_in_production');
 const runtimes=new TenantRuntimeRegistry({mode,pool,strictLedger:true,subjectRefProvider,subjectHmacSecret:process.env.SUBJECT_HMAC_SECRET||'local-dev-subject-hmac-change-me'});
 const policies=new ServicePolicyRegistry(config.policies);const limiter=new SlidingWindowRateLimiter({limit:Number(process.env.RATE_LIMIT_PER_MINUTE||120)});
+const workspaceDirectoryHandler=directoryAuthenticator
+  ?createWorkspaceDirectoryHandler({directory:directoryAuthenticator,rateLimiter:limiter}):null;
 const workspaceSelfSignupEnabled=process.env.WORKSPACE_SELF_SIGNUP_ENABLED==='true';
 if(workspaceSelfSignupEnabled&&
    (!workspaceMembershipEnforced||!pool||!verifier||stagingTokenAuth||
@@ -121,6 +135,8 @@ const sourceTestHtml=integrityEnabled?readFileSync(resolve(root,'demo/source-com
 const server=createServer(async(req,res)=>{
   if(req.method==='POST'&&req.url==='/api/workspaces/registration'&&workspaceRegistration)
     return workspaceRegistration(req,res);
+  if(req.method==='GET'&&req.url==='/api/workspaces'&&workspaceDirectoryHandler)
+    return workspaceDirectoryHandler(req,res);
   if(req.method==='GET'&&(req.url==='/'||req.url==='/console')){res.writeHead(200,{'content-type':'text/html; charset=utf-8','cache-control':'no-store','content-security-policy':"default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",'x-frame-options':'DENY','x-content-type-options':'nosniff','referrer-policy':'no-referrer'});return res.end(consoleHtml)}
   if(req.method==='GET'&&req.url==='/testing/story'&&scrollStoryHtml){
     res.writeHead(200,{'content-type':'text/html; charset=utf-8','cache-control':'no-store',
