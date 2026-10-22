@@ -13,6 +13,12 @@
 - First provider combination: **1C ↔ Bitrix24**, read-only discrepancies first. Write-enabled handoff **requires its own explicit permission, provider-supported contract and separate release decision**, not implicit in a CSV import.
 - Do not accept identifiable customer data in shared-token synthetic staging or anonymous public site. No production deployment until all applicable gates below pass.
 
+## Product slices (one architecture, two separate external promises)
+1. **Read-only cross-source integrity:** authorized 1C and Bitrix24 sources → versioned snapshots → provenance/freshness/field authority → explainable mismatch → host-owned decision. This can be the first tightly scoped real-data pilot **only after G3 prerequisites**. No source modifications and no implication that intake/delivery automation is already live.
+2. **Transactional incoming-enquiry guard:** authenticated source enquiry → safe identity/consent decision → automatic eligible handoff or minimal human exception → provider idempotency/reconciliation. This is the broader original product promise; **synthetic demonstration at G1 is not permission for real automated writes**. External write rollout requires G4.
+
+The two slices share the canonical data, evidence, tenant-security and audit contracts but retain distinct provider capabilities, readiness evidence and customer-facing claims. Product leadership must explicitly choose which slice establishes the initial ICP/value before committing to external features.
+
 ## 1. Executable, dependency-ordered backlog
 | Epic | Work | Depends on | Acceptance evidence |
 | --- | --- | --- | --- |
