@@ -60,9 +60,34 @@ if(workspaceSelfSignupEnabled&&
    (!workspaceMembershipEnforced||!pool||!verifier||stagingTokenAuth||
     config.auth?.mode!=='oidc'||process.env.NODE_ENV==='staging'))
   throw new Error('workspace_self_signup_requires_verified_oidc_and_membership');
+// Bootstrap credentials are deliberately separate from the regular API pool.
+// The authenticated app role must not be able to grant its own memberships.
+if(workspaceSelfSignupEnabled&&
+   (!process.env.WORKSPACE_BOOTSTRAP_DATABASE_URL||
+    process.env.WORKSPACE_BOOTSTRAP_DATABASE_URL===process.env.DATABASE_URL))
+  throw new Error('separate_workspace_bootstrap_database_identity_required');
+let workspaceBootstrapPool=null;
+if(workspaceSelfSignupEnabled){
+  const {Pool}=await import('pg');
+  workspaceBootstrapPool=new Pool({
+    connectionString:process.env.WORKSPACE_BOOTSTRAP_DATABASE_URL,max:3,
+    statement_timeout:Number(process.env.PG_STATEMENT_TIMEOUT_MS||10000)
+  });
+  const appRole=await pool.query(`SELECT current_user AS name,
+    has_table_privilege(current_user,'intake_workspace_memberships','INSERT') AS can_insert,
+    has_table_privilege(current_user,'intake_workspace_memberships','UPDATE') AS can_update,
+    has_table_privilege(current_user,'intake_workspace_memberships','DELETE') AS can_delete`);
+  const bootstrapRole=await workspaceBootstrapPool.query(`SELECT current_user AS name,
+    r.rolsuper,r.rolbypassrls
+    FROM pg_roles r WHERE r.rolname=current_user`);
+  const a=appRole.rows[0],b=bootstrapRole.rows[0];
+  if(!a||!b||a.name===b.name||a.can_insert||a.can_update||a.can_delete||
+     b.rolsuper||b.rolbypassrls)
+    throw new Error('workspace_bootstrap_database_role_boundary_invalid');
+}
 const workspaceRegistration=workspaceSelfSignupEnabled
   ?createWorkspaceRegistrationHandler({
-     verifier,bootstrap:new WorkspaceBootstrap({pool}),rateLimiter:limiter
+     verifier,bootstrap:new WorkspaceBootstrap({pool:workspaceBootstrapPool}),rateLimiter:limiter
    }):null;
 const oneCConfig=process.env.ONE_C_CONFIG_FILE?loadJson(process.env.ONE_C_CONFIG_FILE):null;
 const identityResolver=process.env.IDENTITY_RESOLVER_CONFIG_FILE?new HttpIdentityResolver(loadJson(process.env.IDENTITY_RESOLVER_CONFIG_FILE)):null;
@@ -124,4 +149,4 @@ const server=createServer(async(req,res)=>{
   return api(req,res);
 });
 const port=Number(process.env.PORT||8787),host=process.env.HOST||'127.0.0.1';server.listen(port,host,()=>process.stdout.write(`intake-integrity v0.6 listening on http://${host}:${port}\n`));
-const shutdown=async()=>{server.close();if(pool)await pool.end();};process.on('SIGTERM',shutdown);process.on('SIGINT',shutdown);
+const shutdown=async()=>{server.close();if(workspaceBootstrapPool)await workspaceBootstrapPool.end();if(pool)await pool.end();};process.on('SIGTERM',shutdown);process.on('SIGINT',shutdown);
