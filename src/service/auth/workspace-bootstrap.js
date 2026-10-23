@@ -33,8 +33,13 @@ export class WorkspaceBootstrap {
      FROM intake_workspace_bootstraps b
      JOIN intake_workspaces w ON w.tenant_id=b.tenant_id
      JOIN intake_workspace_memberships m
-       ON m.tenant_id=b.tenant_id AND m.subject_id=$2
-     WHERE b.subject_hash=$1`,[subjectHash,subject]);
+       ON m.tenant_id=b.tenant_id AND m.issuer=$2 AND m.subject_id=$3
+     WHERE b.subject_hash=$1`,[subjectHash,issuer,subject]);
+   // If a legacy bootstrap hash exists but its membership has no issuer,
+   // reject instead of creating a second workspace or adopting a stranger's account.
+   const existingBootstrap=await conn.query('SELECT tenant_id FROM intake_workspace_bootstraps WHERE subject_hash=$1',[subjectHash]);
+   if(existingBootstrap.rows.length&&!previous.rows.length)
+    throw Object.assign(new Error('workspace_identity_rebinding_required'),{statusCode:403});
    if(previous.rows.length){
     const row=previous.rows[0];
     if(row.workspace_status!=='active'||row.membership_status!=='active')
@@ -46,8 +51,8 @@ export class WorkspaceBootstrap {
    await conn.query('INSERT INTO intake_workspaces(tenant_id,display_name) VALUES($1,$2)',
      [workspaceId,name]);
    await conn.query(`INSERT INTO intake_workspace_memberships
-     (tenant_id,subject_id,roles) VALUES($1,$2,$3::text[])`,
-     [workspaceId,subject,['owner']]);
+     (tenant_id,issuer,subject_id,roles) VALUES($1,$2,$3,$4::text[])`,
+     [workspaceId,issuer,subject,['owner']]);
    await conn.query(`INSERT INTO intake_workspace_bootstraps
      (subject_hash,tenant_id) VALUES($1,$2)`,[subjectHash,workspaceId]);
    await conn.query('COMMIT');
