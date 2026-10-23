@@ -15,7 +15,7 @@ export class WorkspaceMembershipAuthenticator {
  async authenticate(req){
   const principal=await this.authenticator.authenticate(req);
   const subject=principal?.id,issuer=principal?.claims?.iss,tenantId=principal?.tenantId;
-  if(typeof issuer!=='string'||!issuer.trim()||
+  if(typeof issuer!=='string'||!issuer.trim()||issuer==='urn:intake:legacy:unverified'||
      typeof subject!=='string'||!subject.trim()||
      typeof tenantId!=='string'||!tenantId.trim()||
      principal.claims?.dev||principal.claims?.sandbox)throw denied();
