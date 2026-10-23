@@ -9,6 +9,7 @@ import { WorkspaceMembershipAuthenticator } from '../src/service/auth/workspace-
 import { VerifiedWorkspaceDirectoryAuthenticator } from '../src/service/auth/workspace-directory.js';
 import { createWorkspaceDirectoryHandler } from '../src/service/auth/workspace-directory-http.js';
 import { WorkspaceBootstrap } from '../src/service/auth/workspace-bootstrap.js';
+import { assertProductionWorkspaceBoundary } from '../src/service/auth/workspace-production-boundary.js';
 import { createWorkspaceRegistrationHandler } from '../src/service/auth/workspace-registration-http.js';
 import { SlidingWindowRateLimiter } from '../src/service/http/rate-limit.js';
 import { createStagingWriteGate } from '../src/service/http/staging-write-gate.js';
@@ -57,6 +58,8 @@ if(process.env.NODE_ENV==='production'&&!workspaceDirectoryEnabled)
 if(workspaceDirectoryEnabled&&(!workspaceMembershipEnforced||!pool||!verifier||
    config.auth?.mode!=='oidc'||stagingTokenAuth))
   throw new Error('workspace_directory_requires_oidc_and_membership');
+if(process.env.NODE_ENV==='production'&&workspaceDirectoryEnabled)
+ await assertProductionWorkspaceBoundary({pool});
 const directoryAuthenticator=workspaceDirectoryEnabled
   ?new VerifiedWorkspaceDirectoryAuthenticator({verifier,pool}):null;
 const authenticator=workspaceDirectoryEnabled

@@ -12,10 +12,12 @@ const db=(memberships=[
  {tenant_id:'w-a',roles:['reviewer'],workspaceId:'w-a',displayName:'Alpha'},
  {tenant_id:'w-b',roles:['auditor'],workspaceId:'w-b',displayName:'Bravo'}
 ])=>({query:async(sql,params)=>{
- assert.equal(params[0],principal.sub);
+ assert.equal(params[0],principal.iss);
+ assert.equal(params[1],principal.sub);
+ assert.match(sql,/m.issuer=\$1/);
  assert.match(sql,/m.status='active'/);
  assert.match(sql,/w.status='active'/);
- const matching=params.length===2?memberships.filter(x=>x.tenant_id===params[1]):memberships;
+ const matching=params.length===3?memberships.filter(x=>x.tenant_id===params[2]):memberships;
  return {rows:matching.slice(0,sql.includes('LIMIT 2')?2:101)};
 }});
 const auth=(pool=db(),claims=principal)=>new VerifiedWorkspaceDirectoryAuthenticator({
@@ -51,7 +53,8 @@ test('OIDC verification and verified email are mandatory',async()=>{
  const noToken=await auth().authenticate({headers:{}}).catch(e=>e);
  assert.equal(noToken.statusCode,401);
  for(const c of [{...principal,email_verified:false},{...principal,dev:true},
-                  {...principal,sandbox:true},{...principal,sub:''}]){
+                  {...principal,sandbox:true},{...principal,sub:''},
+                  {...principal,iss:'urn:intake:legacy:unverified'}]){
   await assert.rejects(()=>auth(db(),c).authenticate(req()),deny);
  }
  let queried=false;

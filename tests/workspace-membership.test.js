@@ -4,14 +4,14 @@ import {WorkspaceMembershipAuthenticator} from '../src/service/auth/workspace-me
 
 const principal=(tenantId='tenant-1',roles=['security_admin'])=>({
  id:'oidc|user-1',tenantId,roles,permissions:new Set(['policy.publish']),
- claims:{sub:'oidc|user-1',tenant_id:tenantId,roles}
+ claims:{iss:'https://login.example',sub:'oidc|user-1',tenant_id:tenantId,roles}
 });
 const subject=(p=principal())=>({authenticate:async()=>p});
 const directory=(roles=['reviewer'],status=true)=>({
  query:async(sql,args)=>{
   assert.match(sql,/m.status='active'/);
   assert.match(sql,/w.status='active'/);
-  assert.deepEqual(args,[p.tenantId,p.id]);
+  assert.deepEqual(args,[p.tenantId,p.claims.iss,p.id]);
   return {rows:status?[{roles}]:[]};
  }
 });
@@ -45,8 +45,9 @@ test('role escalation and malformed directory rows are refused',async()=>{
  }
 });
 test('staging and localhost development identities cannot be used as SaaS accounts',async()=>{
- for(const claims of [{dev:true},{sandbox:true}]){
-  p={...principal(),claims};
+ for(const claims of [{dev:true},{sandbox:true},{sub:'abc'},
+                      {iss:'urn:intake:legacy:unverified',sub:'abc'}]){
+  p={...principal(),claims:{...principal().claims,...claims}};
   const auth=new WorkspaceMembershipAuthenticator({authenticator:subject(p),pool:{
    query:async()=>{throw new Error('must not query membership for developer identity')}
   }});

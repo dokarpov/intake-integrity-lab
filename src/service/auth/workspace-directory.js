@@ -21,6 +21,7 @@ export class VerifiedWorkspaceDirectoryAuthenticator {
   catch{throw fail('unauthorized',401)}
   if(typeof claims?.sub!=='string'||!claims.sub.trim()||
      typeof claims?.iss!=='string'||!claims.iss.trim()||
+     claims.iss==='urn:intake:legacy:unverified'||
      claims.email_verified!==true||claims.dev||claims.sandbox)
    throw fail('verified_identity_required',403);
   return claims;
@@ -37,8 +38,8 @@ export class VerifiedWorkspaceDirectoryAuthenticator {
       w.display_name AS "displayName",m.roles
     FROM intake_workspace_memberships m
     JOIN intake_workspaces w ON w.tenant_id=m.tenant_id
-    WHERE m.subject_id=$1 AND m.status='active' AND w.status='active'
-    ORDER BY w.display_name,m.tenant_id LIMIT 101`,[claims.sub]);
+    WHERE m.issuer=$1 AND m.subject_id=$2 AND m.status='active' AND w.status='active'
+    ORDER BY w.display_name,m.tenant_id LIMIT 101`,[claims.iss,claims.sub]);
   if(list.rows.length>100)throw fail('workspace_directory_limit',403);
   return list.rows.map(({workspaceId,displayName,roles})=>({
    workspaceId,displayName,roles:this.validateRoles(roles)
@@ -54,14 +55,14 @@ export class VerifiedWorkspaceDirectoryAuthenticator {
    ?await this.pool.query(`SELECT m.tenant_id,m.roles
      FROM intake_workspace_memberships m
      JOIN intake_workspaces w ON w.tenant_id=m.tenant_id
-     WHERE m.subject_id=$1 AND m.tenant_id=$2
-       AND m.status='active' AND w.status='active' LIMIT 1`,[claims.sub,selected])
+     WHERE m.issuer=$1 AND m.subject_id=$2 AND m.tenant_id=$3
+       AND m.status='active' AND w.status='active' LIMIT 1`,[claims.iss,claims.sub,selected])
    :await this.pool.query(`SELECT m.tenant_id,m.roles
      FROM intake_workspace_memberships m
      JOIN intake_workspaces w ON w.tenant_id=m.tenant_id
-     WHERE m.subject_id=$1
+     WHERE m.issuer=$1 AND m.subject_id=$2
        AND m.status='active' AND w.status='active'
-     ORDER BY m.tenant_id LIMIT 2`,[claims.sub]);
+     ORDER BY m.tenant_id LIMIT 2`,[claims.iss,claims.sub]);
   if(!selected&&result.rows.length>1)throw fail('workspace_selection_required',409);
   const row=result.rows[0];
   if(!row)throw membershipDenied();
