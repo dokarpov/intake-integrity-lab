@@ -21,6 +21,7 @@ export class VerifiedWorkspaceDirectoryAuthenticator {
   catch{throw fail('unauthorized',401)}
   if(typeof claims?.sub!=='string'||!claims.sub.trim()||
      typeof claims?.iss!=='string'||!claims.iss.trim()||
+     claims.iss==='urn:intake:legacy:unverified'||
      claims.email_verified!==true||claims.dev||claims.sandbox)
    throw fail('verified_identity_required',403);
   return claims;
