@@ -8,6 +8,7 @@ import {PostgresSalesIntegrity} from '../src/sales-integrity/postgres-integrity.
 import {SandboxDecisionEvidence} from '../src/sales-integrity/sandbox-evidence.js';
 import {SandboxCrmSimulator} from '../src/sales-integrity/sandbox-crm.js';
 import {PostgresSourceComparison} from '../src/sales-integrity/source-comparison.js';
+import {shouldBlockStagingWrite} from '../src/service/http/staging-write-gate.js';
 import sourceHtml from '../demo/source-comparison.html';
 import onboardingHtml from '../demo/onboarding.html';
 import scrollStoryHtml from '../demo/scroll-story.html';
@@ -105,6 +106,10 @@ async function route(request){
  }
  if(!path.startsWith('/api/'))return fail('not_found',404);
  if(!validAccess(request))return fail('unauthorized',401);
+ // Neon Function is a separate public staging ingress, not protected by service/server.mjs.
+ // No remote address is trusted here; isolated CI exception never applies.
+ if(shouldBlockStagingWrite({env:process.env,method,remoteAddress:''}))
+  return fail('staging_synthetic_only',423);
  await seedFictional();
  if(method==='GET'&&path==='/api/integrity/sources/latest')
   return json(await sources.latest({tenantId}));
