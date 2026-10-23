@@ -63,6 +63,19 @@ jobs:
       - run: npm install --ignore-scripts
       - run: node --test tests/sales-integrity-api.test.js tests/sales-integrity-worker.test.js
 
+  neon_bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts esbuild pg@8
+      - name: Bundle independent Neon staging Function
+        run: |
+          ./node_modules/.bin/esbuild functions/intake-staging.mjs --bundle --platform=node --target=node22 --format=esm --loader:.html=text --banner:js="import{createRequire as ___cr}from'module';import{fileURLToPath as ___f}from'url';import{dirname as ___d}from'path';const require=___cr(import.meta.url);const __filename=___f(import.meta.url);const __dirname=___d(__filename);" --outfile=/tmp/intake-neon.mjs
+          node --check /tmp/intake-neon.mjs
+
   postgres:
     runs-on: ubuntu-latest
     services:
