@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 import {VerifiedWorkspaceDirectoryAuthenticator} from '../../src/service/auth/workspace-directory.js';
+import {assertProductionWorkspaceBoundary} from '../../src/service/auth/workspace-production-boundary.js';
 
 const migration=file=>readFileSync(new URL('../../infra/postgres/migrations/'+file,import.meta.url),'utf8');
 const verified={iss:'https://idp.test',sub:'directory-test-user',email_verified:true,roles:['owner'],tenant_id:'spoofed-tenant'};
@@ -32,6 +33,10 @@ test('LIVE PostgreSQL only verified membership authorizes workspace selection; d
    await admin.query('GRANT SELECT ON intake_workspaces,intake_workspace_memberships TO '+role);
    const uri=new URL(process.env.TEST_DATABASE_URL);uri.username=role;uri.password=password;
    readonly=new Pool({connectionString:uri.toString(),max:3});
+   const prodProfile=await assertProductionWorkspaceBoundary({pool:readonly});
+   assert.equal(prodProfile.issuerBound,true);
+   await assert.rejects(()=>assertProductionWorkspaceBoundary({pool:admin}),
+    /production_workspace_database_role_unsafe/);
    const directory=new VerifiedWorkspaceDirectoryAuthenticator({
     pool:readonly,
     verifier:{verify:async bearer=>{assert.equal(bearer,'test');return claims}}
