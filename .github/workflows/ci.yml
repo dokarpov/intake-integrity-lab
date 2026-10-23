@@ -145,4 +145,8 @@ jobs:
           BASE_URL=http://127.0.0.1:8787 node tests/source-browser-live.mjs
           BASE_URL=http://127.0.0.1:8787 node tests/onboarding-browser-live.mjs
           BASE_URL=http://127.0.0.1:8787 node tests/scroll-story-browser.mjs
+      - name: Verify shared staging rejects arbitrary customer-data writes over HTTP
+        run: |
+          STAGING_SYNTHETIC_TEST_WRITES=false PORT=8788 node service/server.mjs >/tmp/shared-staging.log 2>&1 &
+          BASE_URL=http://127.0.0.1:8788 node tests/staging-safety-http.mjs
 
