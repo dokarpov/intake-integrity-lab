@@ -19,6 +19,7 @@ test('LIVE PostgreSQL workspace bootstrap enforces replay, identity ownership an
   try{
    await pool.query(migration('006_workspace_memberships.sql'));
    await pool.query(migration('009_workspace_bootstrap.sql'));
+   await pool.query(migration('010_membership_identity_issuer.sql'));
    // Use a non-owner registration role with INSERT/SELECT only.
    await pool.query('CREATE ROLE '+role+" LOGIN PASSWORD '"+password+"'");
    await pool.query('GRANT USAGE ON SCHEMA public TO '+role);
@@ -46,12 +47,13 @@ test('LIVE PostgreSQL workspace bootstrap enforces replay, identity ownership an
    assert.equal(replay.workspaceId,workspaceId);
    assert.equal(replay.displayName,'Example Studio');
    assert.equal(replay.replayed,true);
-   const owner=await pool.query(`SELECT w.tenant_id,w.display_name,m.subject_id,m.roles
+   const owner=await pool.query(`SELECT w.tenant_id,w.display_name,m.issuer,m.subject_id,m.roles
     FROM intake_workspaces w JOIN intake_workspace_memberships m
     ON m.tenant_id=w.tenant_id WHERE w.tenant_id=$1`,[workspaceId]);
    assert.equal(owner.rows.length,1);
    assert.deepEqual(owner.rows[0].roles,['owner']);
    assert.equal(owner.rows[0].subject_id,first.sub);
+   assert.equal(owner.rows[0].issuer,first.iss);
    const second=await bootstrap.registerVerifiedIdentity({claims:other,displayName:'Other Company'});
    assert.notEqual(second.workspaceId,workspaceId);
    const count=await pool.query(`SELECT count(*)::int AS n FROM intake_workspace_bootstraps
