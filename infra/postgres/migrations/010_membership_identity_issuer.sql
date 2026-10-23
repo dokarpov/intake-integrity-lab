@@ -20,15 +20,38 @@ UPDATE intake_workspace_memberships SET issuer='urn:intake:legacy:unverified'
 ALTER TABLE intake_workspace_memberships
  ALTER COLUMN issuer SET NOT NULL;
 
-ALTER TABLE intake_workspace_memberships
- ADD CONSTRAINT workspace_membership_issuer_nonempty
- CHECK (length(trim(issuer)) BETWEEN 1 AND 300);
+DO $
+BEGIN
+ IF NOT EXISTS (SELECT 1 FROM pg_constraint
+   WHERE conrelid='intake_workspace_memberships'::regclass
+     AND conname='workspace_membership_issuer_nonempty') THEN
+  ALTER TABLE intake_workspace_memberships
+   ADD CONSTRAINT workspace_membership_issuer_nonempty
+   CHECK (length(trim(issuer)) BETWEEN 1 AND 300);
+ END IF;
+END
+$;
 
-ALTER TABLE intake_workspace_memberships
- DROP CONSTRAINT intake_workspace_memberships_pkey;
-
-ALTER TABLE intake_workspace_memberships
- ADD PRIMARY KEY (tenant_id,issuer,subject_id);
+-- Preserve repeatability in isolated CI migrations while never changing the
+-- existing upgraded key when a test re-applies this migration.
+DO $
+DECLARE pk_definition text;
+BEGIN
+ SELECT pg_get_constraintdef(oid) INTO pk_definition
+ FROM pg_constraint WHERE conrelid='intake_workspace_memberships'::regclass
+   AND contype='p';
+ IF pk_definition IS NOT NULL AND
+    pk_definition <> 'PRIMARY KEY (tenant_id, issuer, subject_id)' THEN
+  ALTER TABLE intake_workspace_memberships
+   DROP CONSTRAINT intake_workspace_memberships_pkey;
+  pk_definition:=NULL;
+ END IF;
+ IF pk_definition IS NULL THEN
+  ALTER TABLE intake_workspace_memberships
+   ADD PRIMARY KEY (tenant_id,issuer,subject_id);
+ END IF;
+END
+$;
 
 DROP INDEX IF EXISTS intake_workspace_memberships_subject_idx;
 CREATE INDEX intake_workspace_memberships_identity_idx
