@@ -17,6 +17,7 @@ export class WorkspaceBootstrap {
   if(claims?.email_verified!==true)
    throw Object.assign(new Error('verified_email_required'),{statusCode:403});
   const issuer=required(claims.iss,'identity_issuer',300);
+  if(issuer==='urn:intake:legacy:unverified')throw Object.assign(new Error('invalid_identity_issuer'),{statusCode:403});
   const subject=required(claims.sub,'identity_subject',255);
   const name=required(displayName,'workspace_name',120);
   if(name.length<2)throw Object.assign(new Error('workspace_name_too_short'),{statusCode:400});
