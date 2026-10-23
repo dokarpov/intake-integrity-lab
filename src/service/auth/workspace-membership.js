@@ -14,16 +14,17 @@ export class WorkspaceMembershipAuthenticator {
  }
  async authenticate(req){
   const principal=await this.authenticator.authenticate(req);
-  const subject=principal?.id,tenantId=principal?.tenantId;
-  if(typeof subject!=='string'||!subject.trim()||
+  const subject=principal?.id,issuer=principal?.claims?.iss,tenantId=principal?.tenantId;
+  if(typeof issuer!=='string'||!issuer.trim()||
+     typeof subject!=='string'||!subject.trim()||
      typeof tenantId!=='string'||!tenantId.trim()||
      principal.claims?.dev||principal.claims?.sandbox)throw denied();
   const result=await this.pool.query(
    `SELECT m.roles FROM intake_workspace_memberships m
     JOIN intake_workspaces w ON w.tenant_id=m.tenant_id
-    WHERE m.tenant_id=$1 AND m.subject_id=$2
+    WHERE m.tenant_id=$1 AND m.issuer=$2 AND m.subject_id=$3
       AND m.status='active' AND w.status='active' LIMIT 1`,
-   [tenantId,subject]
+   [tenantId,issuer,subject]
   );
   const roles=result.rows?.[0]?.roles;
   if(!Array.isArray(roles)||roles.length===0||roles.length>8||
