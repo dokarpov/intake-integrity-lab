@@ -22,10 +22,11 @@ test('LIVE PostgreSQL only verified membership authorizes workspace selection; d
   try{
    await admin.query(migration('006_workspace_memberships.sql'));
    await admin.query(migration('009_workspace_bootstrap.sql'));
+   await admin.query(migration('010_membership_identity_issuer.sql'));
    for(const tenantId of [a,b,c])
     await admin.query('INSERT INTO intake_workspaces(tenant_id,display_name) VALUES($1,$2)',[tenantId,tenantId]);
-   await admin.query('INSERT INTO intake_workspace_memberships(tenant_id,subject_id,roles) VALUES($1,$2,$3::text[])',[a,subject,['reviewer']]);
-   await admin.query('INSERT INTO intake_workspace_memberships(tenant_id,subject_id,roles) VALUES($1,$2,$3::text[])',[b,subject,['auditor']]);
+   await admin.query('INSERT INTO intake_workspace_memberships(tenant_id,issuer,subject_id,roles) VALUES($1,$2,$3,$4::text[])',[a,claims.iss,subject,['reviewer']]);
+   await admin.query('INSERT INTO intake_workspace_memberships(tenant_id,issuer,subject_id,roles) VALUES($1,$2,$3,$4::text[])',[b,claims.iss,subject,['auditor']]);
    await admin.query('CREATE ROLE '+role+" LOGIN PASSWORD '"+password+"'");
    await admin.query('GRANT USAGE ON SCHEMA public TO '+role);
    await admin.query('GRANT SELECT ON intake_workspaces,intake_workspace_memberships TO '+role);
@@ -39,6 +40,10 @@ test('LIVE PostgreSQL only verified membership authorizes workspace selection; d
    await assert.rejects(()=>directory.authenticate(request()),e=>e.statusCode===409);
    await assert.rejects(()=>directory.authenticate(request(c)),forbidden);
    assert.equal((await directory.authenticate(request(a))).roles[0],'reviewer');
+   const anotherIssuerDirectory=new VerifiedWorkspaceDirectoryAuthenticator({pool:readonly,
+    verifier:{verify:async()=>({...claims,iss:'https://other-issuer.test'})}});
+   await assert.rejects(()=>anotherIssuerDirectory.authenticate(request(a)),forbidden);
+   assert.deepEqual(await anotherIssuerDirectory.listForRequest(request()),[]);
    assert.equal((await directory.authenticate(request(b))).roles[0],'auditor');
    await admin.query('UPDATE intake_workspace_memberships SET status=$1 WHERE tenant_id=$2 AND subject_id=$3',['disabled',a,subject]);
    await assert.rejects(()=>directory.authenticate(request(a)),forbidden);
