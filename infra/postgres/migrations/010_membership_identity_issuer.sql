@@ -20,7 +20,7 @@ UPDATE intake_workspace_memberships SET issuer='urn:intake:legacy:unverified'
 ALTER TABLE intake_workspace_memberships
  ALTER COLUMN issuer SET NOT NULL;
 
-DO $
+DO $$
 BEGIN
  IF NOT EXISTS (SELECT 1 FROM pg_constraint
    WHERE conrelid='intake_workspace_memberships'::regclass
@@ -30,11 +30,11 @@ BEGIN
    CHECK (length(trim(issuer)) BETWEEN 1 AND 300);
  END IF;
 END
-$;
+$$;
 
 -- Preserve repeatability in isolated CI migrations while never changing the
 -- existing upgraded key when a test re-applies this migration.
-DO $
+DO $$
 DECLARE pk_definition text;
 BEGIN
  SELECT pg_get_constraintdef(oid) INTO pk_definition
@@ -51,10 +51,10 @@ BEGIN
    ADD PRIMARY KEY (tenant_id,issuer,subject_id);
  END IF;
 END
-$;
+$$;
 
 DROP INDEX IF EXISTS intake_workspace_memberships_subject_idx;
-CREATE INDEX intake_workspace_memberships_identity_idx
+CREATE INDEX IF NOT EXISTS intake_workspace_memberships_identity_idx
  ON intake_workspace_memberships(issuer,subject_id,tenant_id);
 
 COMMENT ON COLUMN intake_workspace_memberships.issuer IS
