@@ -7,4 +7,11 @@ export async function readJson(req,{maxBytes=256*1024}={}){
 }
 export function sendJson(res,status,body,{requestId}={}){const text=JSON.stringify(body);res.writeHead(status,{'content-type':'application/json; charset=utf-8','content-length':Buffer.byteLength(text),'cache-control':'no-store','x-content-type-options':'nosniff','x-request-id':requestId||''});res.end(text)}
 export function sendNoContent(res,status=204,{requestId}={}){res.writeHead(status,{'cache-control':'no-store','x-content-type-options':'nosniff','x-request-id':requestId||''});res.end()}
-export function errorBody(error,requestId){return{error:{code:error.code||error.message||'internal_error',message:(error.statusCode||0)>=500?'Internal server error':(error.publicMessage||error.message||'Request failed'),requestId}}}
+export function errorBody(error,requestId){
+ const status=error?.statusCode||500;
+ // Never disclose SQL, provider, secret, table, constraint or stack details on
+ // server faults. Client errors preserve the existing stable error contract.
+ if(status>=500)return {error:{code:'internal_error',message:'Internal server error',requestId}};
+ return {error:{code:error.code||error.message||'request_failed',
+  message:error.publicMessage||error.message||'Request failed',requestId}};
+}

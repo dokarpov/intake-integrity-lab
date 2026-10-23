@@ -12,6 +12,8 @@ on:
       - 'config/**'
       - 'demo/**'
       - 'package*.json'
+      - 'infra/**'
+      - 'functions/**'
       - '.github/workflows/ci.yml'
   pull_request:
     paths:
@@ -23,6 +25,8 @@ on:
       - 'config/**'
       - 'demo/**'
       - 'package*.json'
+      - 'infra/**'
+      - 'functions/**'
       - '.github/workflows/ci.yml'
   workflow_dispatch:
 
@@ -58,6 +62,19 @@ jobs:
           node-version: '22'
       - run: npm install --ignore-scripts
       - run: node --test tests/sales-integrity-api.test.js tests/sales-integrity-worker.test.js
+
+  neon_bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --ignore-scripts esbuild pg@8
+      - name: Bundle independent Neon staging Function
+        run: |
+          ./node_modules/.bin/esbuild functions/intake-staging.mjs --bundle --platform=node --target=node22 --format=esm --loader:.html=text --banner:js="import{createRequire as ___cr}from'module';import{fileURLToPath as ___f}from'url';import{dirname as ___d}from'path';const require=___cr(import.meta.url);const __filename=___f(import.meta.url);const __dirname=___d(__filename);" --outfile=/tmp/intake-neon.mjs
+          node --check /tmp/intake-neon.mjs
 
   postgres:
     runs-on: ubuntu-latest
@@ -109,6 +126,8 @@ jobs:
       SANDBOX_EVIDENCE_HMAC_SECRET: ci-only-hmac-for-fictional-review-decisions-signing-key
       INTEGRITY_FINGERPRINT_HMAC_SECRET: ci-only-synthetic-identity-fingerprints-32-chars
       STAGING_FIXTURES: 'true'
+      # Only this GitHub Actions job can submit synthetic fixtures to its disposable DB.
+      STAGING_SYNTHETIC_TEST_WRITES: 'true'
       NODE_ENV: staging
       HOST: 127.0.0.1
     steps:
@@ -139,4 +158,8 @@ jobs:
           BASE_URL=http://127.0.0.1:8787 node tests/source-browser-live.mjs
           BASE_URL=http://127.0.0.1:8787 node tests/onboarding-browser-live.mjs
           BASE_URL=http://127.0.0.1:8787 node tests/scroll-story-browser.mjs
+      - name: Verify shared staging rejects arbitrary customer-data writes over HTTP
+        run: |
+          STAGING_SYNTHETIC_TEST_WRITES=false PORT=8788 node service/server.mjs >/tmp/shared-staging.log 2>&1 &
+          BASE_URL=http://127.0.0.1:8788 node tests/staging-safety-http.mjs
 

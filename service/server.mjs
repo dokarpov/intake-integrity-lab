@@ -11,6 +11,7 @@ import { createWorkspaceDirectoryHandler } from '../src/service/auth/workspace-d
 import { WorkspaceBootstrap } from '../src/service/auth/workspace-bootstrap.js';
 import { createWorkspaceRegistrationHandler } from '../src/service/auth/workspace-registration-http.js';
 import { SlidingWindowRateLimiter } from '../src/service/http/rate-limit.js';
+import { createStagingWriteGate } from '../src/service/http/staging-write-gate.js';
 import { ServicePolicyRegistry } from '../src/service/policies.js';
 import { TenantRuntimeRegistry } from '../src/service/runtime.js';
 import { AwsKmsHmacPseudonymizer } from '../src/compliance/pseudonymizer-kms.js';
@@ -132,7 +133,9 @@ const integrityTestHtml=integrityEnabled?readFileSync(resolve(root,'demo/integri
 const onboardingTestHtml=integrityEnabled?readFileSync(resolve(root,'demo/onboarding.html'),'utf8'):null;
 const scrollStoryHtml=integrityEnabled?readFileSync(resolve(root,'demo/scroll-story.html'),'utf8'):null;
 const sourceTestHtml=integrityEnabled?readFileSync(resolve(root,'demo/source-comparison.html'),'utf8'):null;
+const stagingWriteGate=createStagingWriteGate();
 const server=createServer(async(req,res)=>{
+  if(stagingWriteGate(req,res))return;
   if(req.method==='POST'&&req.url==='/api/workspaces/registration'&&workspaceRegistration)
     return workspaceRegistration(req,res);
   if(req.method==='GET'&&req.url==='/api/workspaces'&&workspaceDirectoryHandler)

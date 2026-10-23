@@ -8,6 +8,8 @@ import { AsyncComplianceLedger } from '../src/compliance/async-ledger.js';
 import { recordDeliveryAttempt, recordDeliveryResult } from '../src/compliance/audited-delivery.js';
 import { ServicePolicyRegistry } from '../src/service/policies.js';
 
+// A shared synthetic staging environment must never start a real 1C sender.
+if(process.env.NODE_ENV==='staging')throw new Error('staging_real_provider_delivery_forbidden');
 function load(path){return JSON.parse(readFileSync(path,'utf8'))}
 if(!process.env.DATABASE_URL||!process.env.ONE_C_CONFIG_FILE||!process.env.SERVICE_CONFIG_FILE)throw new Error('DATABASE_URL_ONE_C_CONFIG_FILE_SERVICE_CONFIG_FILE_required');
 const service=load(process.env.SERVICE_CONFIG_FILE), oneC=load(process.env.ONE_C_CONFIG_FILE), policies=new ServicePolicyRegistry(service.policies), integrationPolicy=policies.get('integration');

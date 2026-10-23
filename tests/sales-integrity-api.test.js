@@ -127,3 +127,19 @@ test('integrity detail reports unknown intake as 404',async()=>{
    assert.equal(r.status,404);
  });
 });
+
+test('PostgreSQL SQLSTATE errors cannot leak internal syntax or schema through the API',async()=>{
+ const store={async receiveEnquiry(){
+  throw Object.assign(new Error('invalid input syntax for type uuid: private schema details'),
+   {code:'22P02'});
+ }};
+ await withApi({store},async({call})=>{
+  const r=await call('/api/integrity/intakes',{method:'POST',roles:'sales',
+   body:{source:'fake',sourceEventKey:'simulated-error'}});
+  assert.equal(r.status,500);
+  const body=await r.json();
+  assert.equal(body.error.code,'internal_error');
+  assert.equal(body.error.message,'Internal server error');
+  assert.doesNotMatch(JSON.stringify(body),/private schema|invalid input syntax|22P02/);
+ });
+});
