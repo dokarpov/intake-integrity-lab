@@ -17,6 +17,7 @@ export class WorkspaceMembershipAuthenticator {
   const subject=principal?.id,issuer=principal?.claims?.iss,tenantId=principal?.tenantId;
   if(typeof issuer!=='string'||!issuer.trim()||issuer==='urn:intake:legacy:unverified'||
      typeof subject!=='string'||!subject.trim()||
+     principal.claims?.sub!==subject||
      typeof tenantId!=='string'||!tenantId.trim()||
      principal.claims?.dev||principal.claims?.sandbox)throw denied();
   const result=await this.pool.query(
