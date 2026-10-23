@@ -11,19 +11,20 @@ test('PostgreSQL membership restricts organizations and disables revoked users',
   const unique=randomUUID(),organizationA='org_a_'+unique,organizationB='org_b_'+unique;
   const subjectId='member_'+unique;
   let selected=organizationA;
-  const identity={authenticate:async()=>({id:subjectId,tenantId:selected,roles:['policy_admin'],claims:{sub:subjectId}})};
+  const identity={authenticate:async()=>({id:subjectId,tenantId:selected,roles:['policy_admin'],claims:{iss:'https://example-idp.test',sub:subjectId}})};
   const auth=new WorkspaceMembershipAuthenticator({authenticator:identity,pool});
   try{
    await pool.query(readFileSync(new URL('../../infra/postgres/migrations/006_workspace_memberships.sql',import.meta.url),'utf8'));
+   await pool.query(readFileSync(new URL('../../infra/postgres/migrations/010_membership_identity_issuer.sql',import.meta.url),'utf8'));
    for(const tenantId of [organizationA,organizationB])
     await pool.query('INSERT INTO intake_workspaces(tenant_id,display_name) VALUES($1,$2)',[tenantId,'Test workspace']);
-   await pool.query('INSERT INTO intake_workspace_memberships(tenant_id,subject_id,roles) VALUES($1,$2,$3)',[organizationA,subjectId,['reviewer']]);
+   await pool.query('INSERT INTO intake_workspace_memberships(tenant_id,issuer,subject_id,roles) VALUES($1,$2,$3,$4)',[organizationA,'https://example-idp.test',subjectId,['reviewer']]);
    const assigned=await auth.authenticate({});
    assert.deepEqual(assigned.roles,['reviewer']);
    assert.equal(assigned.permissions.has('policy.publish'),false);
    selected=organizationB;
    await assert.rejects(()=>auth.authenticate({}),e=>e.statusCode===403);
-   await pool.query('INSERT INTO intake_workspace_memberships(tenant_id,subject_id,roles) VALUES($1,$2,$3)',[organizationB,subjectId,['auditor']]);
+   await pool.query('INSERT INTO intake_workspace_memberships(tenant_id,issuer,subject_id,roles) VALUES($1,$2,$3,$4)',[organizationB,'https://example-idp.test',subjectId,['auditor']]);
    assert.deepEqual((await auth.authenticate({})).roles,['auditor']);
    await pool.query('UPDATE intake_workspace_memberships SET status=$3 WHERE tenant_id=$1 AND subject_id=$2',[organizationB,subjectId,'disabled']);
    await assert.rejects(()=>auth.authenticate({}),e=>e.statusCode===403);
