@@ -12,6 +12,8 @@ on:
       - 'config/**'
       - 'demo/**'
       - 'package*.json'
+      - 'infra/**'
+      - 'functions/**'
       - '.github/workflows/ci.yml'
   pull_request:
     paths:
@@ -23,6 +25,8 @@ on:
       - 'config/**'
       - 'demo/**'
       - 'package*.json'
+      - 'infra/**'
+      - 'functions/**'
       - '.github/workflows/ci.yml'
   workflow_dispatch:
 
@@ -109,6 +113,8 @@ jobs:
       SANDBOX_EVIDENCE_HMAC_SECRET: ci-only-hmac-for-fictional-review-decisions-signing-key
       INTEGRITY_FINGERPRINT_HMAC_SECRET: ci-only-synthetic-identity-fingerprints-32-chars
       STAGING_FIXTURES: 'true'
+      # Only this GitHub Actions job can submit synthetic fixtures to its disposable DB.
+      STAGING_SYNTHETIC_TEST_WRITES: 'true'
       NODE_ENV: staging
       HOST: 127.0.0.1
     steps:
