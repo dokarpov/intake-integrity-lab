@@ -6,7 +6,7 @@ A working control plane for incoming enquiries, identity uncertainty, consent, h
 
 [![CI](https://github.com/dokarpov/intake-integrity-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/dokarpov/intake-integrity-lab/actions/workflows/ci.yml) · [Product validation](docs/PRODUCT_VALIDATION.md) · [Security](SECURITY.md) · [Changelog](CHANGELOG.md)
 
-> **Engineering prototype · v0.6.2.** This repository demonstrates executable controls. It does **not** claim production customer deployments, commercial traction, regulatory certification or real-world performance metrics.
+> **Engineering prototype · v0.6.2.** Executable intake, review and delivery controls; customer deployment and operational impact remain to be validated.
 
 ## Start with the product decision
 
@@ -16,7 +16,7 @@ A working control plane for incoming enquiries, identity uncertainty, consent, h
 
 **Decision:** allow eligible clear records to proceed; hold ambiguous assignments for a reviewer with a reason and source context. Keep delivery idempotent and actions traceable separately from probabilistic identity matching.
 
-**What the engineering tests establish:** executable validation, service controls, review state and safe delivery behavior under defined fixtures. **What they do not establish:** live CRM/1C connectivity for customers, operator time savings, customer adoption or legal certification.
+**Evidence:** executable validation, service controls, review state and delivery behavior under defined test fixtures.
 
 ## Why this exists
 
@@ -79,10 +79,7 @@ See [product-validation notes](docs/PRODUCT_VALIDATION.md) for the difference be
 | Operator Chromium smoke | Passing at 320, 390, 768 and 1440px in CI |
 | AWS Object Lock / KMS | Live integration suite; requires real sandbox resources |
 | 1C delivery | Live integration suite; requires real sandbox endpoint |
-| Production customer deployment | **Not claimed** |
-| Compliance certification | **Not claimed** |
 
-The synthetic UI examples and test fixtures are examples, not customer outcomes.
 
 ## Try it
 
@@ -116,14 +113,13 @@ Live tests do real work in their configured sandboxes. Read [live integration te
 3. Can a human later explain who decided, under which policy, and with what evidence?
 4. Can a team configure and operate the controls without needing to understand the cryptography?
 
-These are design and implementation questions. Whether they solve a customer's operational pain at an acceptable cost still requires independent validation.
 
-## Scope and limitations
+## Deployment considerations
 
 - No source-client specifications, customer screenshots, production records or proprietary test inputs are included.
 - The project is **not** a certified compliance product. Deployers remain responsible for their legal basis, retention policy, operations and access controls.
 - KMS/HSM, immutable storage and 1C integrations depend on separately configured environments; including an adapter does not mean the service is connected.
-- Performance, customer value and sales traction have not been validated by the repository alone.
+- Validate operator outcomes, deployment performance and cost with real integration partners before scaling.
 
 ## Project map
 
