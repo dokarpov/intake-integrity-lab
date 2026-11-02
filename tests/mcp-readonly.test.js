@@ -48,7 +48,7 @@ async function harness(run){
  const handler=createReadOnlyMcpHandler({authenticator,sourceComparisonStore:store,resourceAudience:RESOURCE,authorizationServer:ISSUER});
  const server=createServer(handler);
  await new Promise(r=>server.listen(0,'127.0.0.1',r));
- const base='http://127.0.0.1:'+server.address().port;
+ const base='http://127.0.0.1:'+server.address().port+'/mcp';
  let id=0;
  const post=async(method,params={},opts={})=>{
   const message=opts.notification
@@ -143,7 +143,7 @@ test('backend errors are redacted from MCP responses',async()=>{
  const server=createServer(broken);
  await new Promise(r=>server.listen(0,'127.0.0.1',r));
  try{
-  const response=await fetch('http://127.0.0.1:'+server.address().port,{method:'POST',
+  const response=await fetch('http://127.0.0.1:'+server.address().port+'/mcp',{method:'POST',
    headers:{authorization:'Bearer reviewer','content-type':'application/json'},
    body:JSON.stringify({jsonrpc:'2.0',id:1,method:'tools/call',
     params:{name:'get_latest_discrepancies',arguments:{}}})});
@@ -155,7 +155,7 @@ test('backend errors are redacted from MCP responses',async()=>{
 
 test('OAuth resource metadata is public, but tools demand scoped bearer with discovery challenge',async()=>{
  await harness(async({post,base})=>{
-  const metaResponse=await fetch(base.replace(/\\/mcp$/,'/.well-known/oauth-protected-resource/mcp'));
+  const metaResponse=await fetch(base.replace('/mcp','/.well-known/oauth-protected-resource/mcp'));
   assert.equal(metaResponse.status,200);
   const metadata=await metaResponse.json();
   assert.equal(metadata.resource,RESOURCE);
