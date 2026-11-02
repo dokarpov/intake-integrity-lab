@@ -7,7 +7,7 @@ const row=name=>({name,rls:true,owns_table:false,can_select:true,
  can_insert:false,can_update:false,can_delete:false});
 const fake=(role=safe(),tables=names.map(row))=>({
  query:async(sql)=>{
-  if(sql.includes('FROM pg_roles'))return {rows:[role]};
+  if(sql.includes('SELECT rolsuper'))return {rows:[role]};
   if(sql.includes('FROM pg_class'))return {rows:tables};
   throw Error('Unexpected SQL');
  }
