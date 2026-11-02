@@ -20,7 +20,7 @@ export function createApiHandler({authenticator,runtimes,policies,rateLimiter,in
     try{
       const url=new URL(req.url,'http://service.local');
       if(req.method==='GET'&&url.pathname==='/healthz')return sendJson(res,200,{ok:true,service:'intake-integrity',version:'0.6.0'},{requestId});
-      if(req.method==='GET'&&url.pathname==='/readyz')return sendJson(res,200,{ok:true},{requestId});
+      if(req.method==='GET'&&url.pathname==='/readyz'){if(runtimes.mode==='postgres'){try{await runtimes.pool.query('SELECT 1')}catch{return sendJson(res,503,{ok:false,storage:'unavailable',reviewDeliveryReady:false},{requestId})}}return sendJson(res,200,{ok:true,storage:runtimes.mode||'unknown',reviewDeliveryReady:false},{requestId})}
       let principal;try{principal=await authenticator.authenticate(req)}catch(e){e.statusCode=e.statusCode||401;e.code=e.code||'unauthorized';throw e}const rt=runtimes.tenant(principal.tenantId);
       const rl=rateLimiter?.check(`${principal.tenantId}:${principal.id}:${url.pathname}`,url.pathname.startsWith('/api/audit/export')?{limit:10,windowMs:60_000}:undefined);if(rl&&!rl.allowed){res.setHeader('retry-after',String(Math.ceil(rl.retryAfterMs/1000)));throw Object.assign(new Error('rate_limit_exceeded'),{statusCode:429})}
 
