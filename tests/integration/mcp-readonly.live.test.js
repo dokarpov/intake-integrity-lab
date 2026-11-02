@@ -40,7 +40,7 @@ test('LIVE Postgres MCP reads persisted evidence with strictly authenticated ten
   await new Promise(r=>server.listen(0,'127.0.0.1',r));
   let requestId=0;
   const call=async(token,name,args={})=>{
-   const response=await fetch('http://127.0.0.1:'+server.address().port,{
+   const response=await fetch('http://127.0.0.1:'+server.address().port+'/mcp',{
     method:'POST',headers:{authorization:'Bearer '+token,'content-type':'application/json'},
     body:JSON.stringify({jsonrpc:'2.0',id:++requestId,method:'tools/call',
       params:{name,arguments:args}})});
