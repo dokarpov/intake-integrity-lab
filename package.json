@@ -18,12 +18,13 @@
     "db:migrate:staging": "node scripts/migrate-staging.mjs --apply",
     "db:seed:staging": "node scripts/seed-staging.mjs",
     "test:unit": "node --test tests/*.test.js",
-    "test:integration:postgres": "node --test --test-concurrency=1 tests/integration/postgres.live.test.js tests/integration/sales-integrity.live.test.js tests/integration/source-comparison.live.test.js tests/integration/workspace-membership.live.test.js tests/integration/source-rls.live.test.js tests/integration/core-tenant-rls.live.test.js tests/integration/workspace-bootstrap.live.test.js tests/integration/workspace-directory.live.test.js",
+    "test:integration:postgres": "node --test --test-concurrency=1 tests/integration/postgres.live.test.js tests/integration/sales-integrity.live.test.js tests/integration/source-comparison.live.test.js tests/integration/workspace-membership.live.test.js tests/integration/source-rls.live.test.js tests/integration/core-tenant-rls.live.test.js tests/integration/workspace-bootstrap.live.test.js tests/integration/workspace-directory.live.test.js tests/integration/source-pair-sync.live.test.js",
     "test:integration:aws": "node --test tests/integration/aws.live.test.js",
     "test:integration:one-c": "node --test tests/integration/one-c.live.test.js",
     "test:integration": "node --test tests/integration/*.live.test.js",
     "worker:delivery": "node service/delivery-worker.mjs",
-    "test:integration:sales-integrity": "node --test tests/integration/sales-integrity.live.test.js"
+    "test:integration:sales-integrity": "node --test tests/integration/sales-integrity.live.test.js",
+    "worker:source-sync": "node service/source-sync-worker.mjs"
   },
   "engines": {
     "node": ">=20"
@@ -33,7 +34,8 @@
     "@aws-sdk/client-kms": "^3.0.0",
     "@aws-sdk/client-s3": "^3.0.0",
     "pg": "^8.0.0",
-    "pkcs11js": "^2.1.6"
+    "pkcs11js": "^2.1.6",
+    "@aws-sdk/client-secrets-manager": "^3.0.0"
   },
   "author": "Daria Karpova <dokarpov>",
   "keywords": [
