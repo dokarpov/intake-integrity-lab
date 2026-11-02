@@ -122,5 +122,9 @@ DROP TRIGGER IF EXISTS source_sync_staging_open_only ON sales_source_sync_stagin
 CREATE TRIGGER source_sync_staging_open_only BEFORE INSERT OR UPDATE ON sales_source_sync_staging
  FOR EACH ROW EXECUTE FUNCTION source_sync_reject_published_mutation();
 
+DROP TRIGGER IF EXISTS source_sync_pages_open_only ON sales_source_sync_pages;
+CREATE TRIGGER source_sync_pages_open_only BEFORE INSERT OR UPDATE ON sales_source_sync_pages
+ FOR EACH ROW EXECUTE FUNCTION source_sync_reject_published_mutation();
+
 -- Never grant application DELETE against any evidence/staging table. Retention
 -- and DSR deletion (with audit) require separately approved governance.
