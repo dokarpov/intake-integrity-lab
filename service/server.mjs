@@ -13,6 +13,7 @@ import { assertProductionWorkspaceBoundary } from '../src/service/auth/workspace
 import { createWorkspaceRegistrationHandler } from '../src/service/auth/workspace-registration-http.js';
 import { SlidingWindowRateLimiter } from '../src/service/http/rate-limit.js';
 import { createStagingWriteGate } from '../src/service/http/staging-write-gate.js';
+import { createReadOnlyMcpHandler } from '../src/service/mcp/read-only.js';
 import { ServicePolicyRegistry } from '../src/service/policies.js';
 import { TenantRuntimeRegistry } from '../src/service/runtime.js';
 import { AwsKmsHmacPseudonymizer } from '../src/compliance/pseudonymizer-kms.js';
@@ -126,6 +127,16 @@ const sandboxEvidenceProvider=sandboxEnabled?new SandboxDecisionEvidence({
   secret:process.env.SANDBOX_EVIDENCE_HMAC_SECRET,integrityStore,tenantId:'staging-demo'
 }):null;
 const sandboxCrmSimulator=sandboxEnabled?new SandboxCrmSimulator({pool,integrity:integrityStore,tenantId:'staging-demo'}):null;
+// MCP has a separate opt-in release gate. No shared-token staging or dev
+// impersonation, and no extra database privileges / anonymous tool calls.
+const mcpEnabled=process.env.MCP_READONLY_ENABLED==='true';
+if(mcpEnabled&&
+  (process.env.NODE_ENV!=='production'||!workspaceDirectoryEnabled||
+   !workspaceMembershipEnforced||!integrityEnabled||!sourceComparisonStore||stagingTokenAuth))
+ throw Error('mcp_requires_verified_production_workspace_and_source_evidence');
+const mcpHandler=mcpEnabled?createReadOnlyMcpHandler({
+ authenticator,sourceComparisonStore,rateLimiter:limiter
+}):null;
 const api=createApiHandler({
   authenticator,runtimes,policies,rateLimiter:limiter,intakeConfig:config.intake||{},
   oneCConfig,identityResolver,integrityStore,
@@ -139,6 +150,8 @@ const sourceTestHtml=integrityEnabled?readFileSync(resolve(root,'demo/source-com
 const stagingWriteGate=createStagingWriteGate();
 const server=createServer(async(req,res)=>{
   if(stagingWriteGate(req,res))return;
+  if(mcpHandler&&new URL(req.url,'http://service.local').pathname==='/mcp')
+    return mcpHandler(req,res);
   if(req.method==='POST'&&req.url==='/api/workspaces/registration'&&workspaceRegistration)
     return workspaceRegistration(req,res);
   if(req.method==='GET'&&req.url==='/api/workspaces'&&workspaceDirectoryHandler)
