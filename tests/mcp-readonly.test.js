@@ -5,6 +5,7 @@ import {createReadOnlyMcpHandler} from '../src/service/mcp/read-only.js';
 
 const calls=[];
 const RESOURCE='https://intake.example/mcp';
+const ISSUER='https://idp.example';
 const comparison={
  comparisonId:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',createdAt:'2026-11-02T11:00:00Z',
  policyVersion:'cross-source-v1',snapshots:{oneC:'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',bitrix24:'cccccccc-cccc-4ccc-8ccc-cccccccccccc'},
@@ -44,7 +45,7 @@ function auth(){
 }
 async function harness(run){
  const authenticator=auth();
- const handler=createReadOnlyMcpHandler({authenticator,sourceComparisonStore:store,resourceAudience:RESOURCE});
+ const handler=createReadOnlyMcpHandler({authenticator,sourceComparisonStore:store,resourceAudience:RESOURCE,authorizationServer:ISSUER});
  const server=createServer(handler);
  await new Promise(r=>server.listen(0,'127.0.0.1',r));
  const base='http://127.0.0.1:'+server.address().port;
@@ -59,9 +60,9 @@ async function harness(run){
     ...(opts.origin?{origin:opts.origin}:{})},
    body:opts.verb==='GET'?undefined:JSON.stringify(message)});
   let json=null;if(response.status!==202)json=await response.json();
-  return {status:response.status,json};
+  return {status:response.status,json,headers:response.headers};
  };
- try{await run({post,authenticator})}finally{await new Promise(r=>server.close(r))}
+ try{await run({post,authenticator,base})}finally{await new Promise(r=>server.close(r))}
 }
 const unwrap=message=>JSON.parse(message.json.result.content[0].text);
 test('MCP handshake, list and stateless notification are protocol-compatible',async()=>{
@@ -117,8 +118,8 @@ test('missing or revoked bearer, dev identity, non-reviewer and browser origins 
   assert.equal((await post('tools/list',{}, {token:null})).status,401);
   assert.equal((await post('tools/list',{}, {token:'dev'})).status,403);
   assert.equal((await post('tools/list',{}, {token:'no-review'})).status,403);
-  assert.equal((await post('tools/list',{}, {token:'wrong-audience'})).status,403);
-  assert.equal((await post('tools/list',{}, {token:'wrong-scope'})).status,403);
+  assert.equal((await post('tools/list',{}, {token:'wrong-audience'})).status,401);
+  assert.equal((await post('tools/list',{}, {token:'wrong-scope'})).status,401);
   assert.equal((await post('tools/list',{}, {origin:'https://evil.example'})).status,403);
   authenticator.blocked.add('Bearer reviewer');
   assert.equal((await post('tools/list')).status,401);
@@ -138,7 +139,7 @@ test('malformed RPC, arbitrary methods and dangerous write-tools are rejected wi
 });
 test('backend errors are redacted from MCP responses',async()=>{
  const broken=createReadOnlyMcpHandler({authenticator:auth(),
-  sourceComparisonStore:{latestComparison:async()=>{throw Error('SQL password=internal-secret')}},resourceAudience:RESOURCE});
+  sourceComparisonStore:{latestComparison:async()=>{throw Error('SQL password=internal-secret')}},resourceAudience:RESOURCE,authorizationServer:ISSUER});
  const server=createServer(broken);
  await new Promise(r=>server.listen(0,'127.0.0.1',r));
  try{
@@ -150,4 +151,21 @@ test('backend errors are redacted from MCP responses',async()=>{
   assert.equal(output.result.isError,true);
   assert.doesNotMatch(JSON.stringify(output),/SQL|password|internal-secret/);
  }finally{await new Promise(r=>server.close(r))}
+});
+
+test('OAuth resource metadata is public, but tools demand scoped bearer with discovery challenge',async()=>{
+ await harness(async({post,base})=>{
+  const metaResponse=await fetch(base.replace(/\\/mcp$/,'/.well-known/oauth-protected-resource/mcp'));
+  assert.equal(metaResponse.status,200);
+  const metadata=await metaResponse.json();
+  assert.equal(metadata.resource,RESOURCE);
+  assert.deepEqual(metadata.authorization_servers,[ISSUER]);
+  assert.deepEqual(metadata.scopes_supported,['evidence:read','evidence:values:read']);
+  const unauth=await post('tools/list',{}, {token:null});
+  assert.equal(unauth.status,401);
+  assert.match(unauth.headers.get('www-authenticate'),/resource_metadata="https:\/\/intake\.example\/\.well-known\/oauth-protected-resource\/mcp"/);
+  const wrong=await post('tools/list',{}, {token:'wrong-scope'});
+  assert.equal(wrong.status,401);
+  assert.match(wrong.headers.get('www-authenticate'),/scope="evidence:read"/);
+ });
 });
