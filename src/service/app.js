@@ -13,7 +13,7 @@ function subjectRefString(ref){return typeof ref==='string'?ref:ref?.ref}
 function operationAudit(policy,principal,subjectRef,extra={}){return{actor:actor(principal),subjectRef,...policy,policyRefs:policy.policyRefs||[],...extra}}
 function httpStatusFor(error){if(typeof error?.code==='string'&&/^[0-9A-Z]{5}$/.test(error.code))return 500;if(error.statusCode)return error.statusCode;if(/idempotency_key_payload_conflict|enquiry_already_decided|delivery_lease_conflict/.test(String(error.message||'')))return 409;const m=String(error.message||'');if(/required|invalid|not_allowed|fields_|missing|unsupported|transition|conflict|already|not_proposed|not_approved/.test(m))return 400;if(/not_found/.test(m))return 404;if(/forbidden|denied/.test(m))return 403;if(/claim/.test(m)&&/conflict|another/.test(m))return 409;return 500}
 
-export function createApiHandler({authenticator,runtimes,policies,rateLimiter,intakeConfig={},oneCConfig=null,identityResolver=null,fetchFn=globalThis.fetch,controlStatusProvider=null,integrityStore=null,integrityEvidenceVerifier=null,sandboxEvidenceProvider=null,sandboxCrmSimulator=null,sourceComparisonStore=null}={}){
+export function createApiHandler({authenticator,runtimes,policies,rateLimiter,intakeConfig={},oneCConfig=null,identityResolver=null,fetchFn=globalThis.fetch,controlStatusProvider=null,integrityStore=null,integrityEvidenceVerifier=null,sandboxEvidenceProvider=null,sandboxCrmSimulator=null,sourceComparisonStore=null,sourceSyncStore=null,sourceSyncVault=null}={}){
   if(!authenticator||!runtimes||!policies)throw new Error('service_dependencies_required');
   return async function handler(req,res){
     const requestId=correlationId(req);res.setHeader('x-request-id',requestId);res.setHeader('referrer-policy','no-referrer');res.setHeader('permissions-policy','camera=(), microphone=(), geolocation=()');
@@ -63,6 +63,49 @@ export function createApiHandler({authenticator,runtimes,policies,rateLimiter,in
           });
           return sendJson(res,200,result,{requestId});
         }
+        // Authentic paired source reads are queued, never HTTP-bound; the
+        // worker owns credentials and the published pair is atomic.
+        if(sourceSyncStore&&url.pathname.startsWith('/api/integrity/sources/')){
+          if(req.method==='POST'&&url.pathname==='/api/integrity/sources/sync'){
+            requirePermission(principal,'integration.sync');
+            const syncLimit=rateLimiter?.check('source-sync:'+principal.tenantId,
+              {limit:4,windowMs:60*60*1000});
+            if(syncLimit&&!syncLimit.allowed)throw Object.assign(
+              new Error('source_sync_rate_limited'),{statusCode:429});
+            if(!sourceSyncVault)throw Object.assign(new Error('source_sync_vault_not_configured'),{statusCode:503});
+            const grant=await sourceSyncVault.getApproved(principal.tenantId);
+            const queued=await sourceSyncStore.enqueue({tenantId:principal.tenantId,
+              actorRef:principal.id,mappingVersion:grant.mappingVersion});
+            return sendJson(res,202,queued,{requestId});
+          }
+          if(req.method==='GET'&&url.pathname==='/api/integrity/sources/sync/status'){
+            requirePermission(principal,'integration.read');
+            const runId=url.searchParams.get('runId');
+            if(!runId||!/^[0-9a-f-]{36}$/i.test(runId))
+              throw Object.assign(new Error('sync_run_id_invalid'),{statusCode:400});
+            const state=await sourceSyncStore.status({tenantId:principal.tenantId,runId});
+            if(!state)throw Object.assign(new Error('sync_run_not_found'),{statusCode:404});
+            return sendJson(res,200,state,{requestId});
+          }
+          if(req.method==='GET'&&url.pathname==='/api/integrity/sources/report/latest'){
+            requirePermission(principal,'review.read');
+            return sendJson(res,200,
+              (await sourceSyncStore.latestReport({tenantId:principal.tenantId}))||{status:'not_available'},
+              {requestId});
+          }
+          if(req.method==='GET'&&url.pathname==='/api/integrity/sources/report/findings'){
+            requirePermission(principal,'review.read');
+            const runId=url.searchParams.get('runId');
+            if(!runId||!/^[0-9a-f-]{36}$/i.test(runId))
+              throw Object.assign(new Error('sync_run_id_invalid'),{statusCode:400});
+            const includeValues=url.searchParams.get('includeValues')==='true';
+            if(includeValues)requirePermission(principal,'audit.read');
+            const limit=Number(url.searchParams.get('limit')||50);
+            const offset=Number(url.searchParams.get('offset')||0);
+            return sendJson(res,200,await sourceSyncStore.findings({
+              tenantId:principal.tenantId,runId,limit,offset,includeValues}),{requestId});
+          }
+        }
         if(sourceComparisonStore&&url.pathname.startsWith('/api/integrity/sources/')){
           if(req.method==='GET'&&url.pathname==='/api/integrity/sources/latest'){
             requirePermission(principal,'review.read');
@@ -70,14 +113,31 @@ export function createApiHandler({authenticator,runtimes,policies,rateLimiter,in
           }
           if(req.method==='GET'&&url.pathname==='/api/integrity/sources/comparison/latest'){
             requirePermission(principal,'review.read');
+            if(sourceSyncStore){
+              const report=await sourceSyncStore.latestReport({tenantId:principal.tenantId});
+              if(!report)return sendJson(res,200,{comparisonId:null},{requestId});
+              const preview=await sourceSyncStore.findings({tenantId:principal.tenantId,
+                runId:report.runId,limit:50,includeValues:principal.permissions.has('audit.read')});
+              return sendJson(res,200,{
+                comparisonId:report.runId,createdAt:report.completedAt,
+                policyVersion:'cross-source-full-v1',snapshots:report.snapshots,
+                counts:report.counts,observations:preview.items,
+                previewOnly:true,moreFindings:preview.more,
+                sourceQuality:report.collectionQuality,note:report.note
+              },{requestId});
+            }
             return sendJson(res,200,(await sourceComparisonStore.latestComparison({tenantId:principal.tenantId}))||{comparisonId:null},{requestId});
           }
           if(req.method==='POST'&&url.pathname==='/api/integrity/sources/snapshots'){
+            // Manual/browser-supplied records are fictional demo inputs only.
+            // Production reads MUST come from server-authorized provider grants.
+            if(sourceSyncStore)throw Object.assign(new Error('manual_source_import_forbidden'),{statusCode:403});
             requirePermission(principal,'integration.test');
             const value=await readJson(req,{maxBytes:64000});
             return sendJson(res,201,await sourceComparisonStore.importSnapshot({...value,tenantId:principal.tenantId,actorRef:principal.id}),{requestId});
           }
           if(req.method==='POST'&&url.pathname==='/api/integrity/sources/compare'){
+            if(sourceSyncStore)throw Object.assign(new Error('manual_source_compare_forbidden'),{statusCode:403});
             requirePermission(principal,'review.read');
             return sendJson(res,200,await sourceComparisonStore.compareLatest({tenantId:principal.tenantId,actorRef:principal.id}),{requestId});
           }
