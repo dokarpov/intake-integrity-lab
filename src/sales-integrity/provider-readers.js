@@ -146,13 +146,15 @@ export async function* onecOdataPages({connection,mapping,fetchFn,sleep,signal}=
   m.counterpartyTypeField,m.contactRefField,m.ownerRefField,m.statusField,
   m.versionField].filter(Boolean))];
  const encoded=Buffer.from(username+':'+password,'utf8').toString('base64');
- let offset=0;const seen=new Set();
+ let offset=0;const seen=new Set(),seenLinks=new Set();
+ let nextUrl=null;
  for(let page=0;page<MAX_PAGES;page++){
   const q=new URL(base);
   q.searchParams.set('$format','json');q.searchParams.set('$top',String(PAGE));
   q.searchParams.set('$skip',String(offset));q.searchParams.set('$orderby',m.idField+' asc');
   q.searchParams.set('$select',fields.join(','));
-  const data=await providerJson({url:q.toString(),method:'GET',fetchFn,sleep,signal,
+  const requested=nextUrl||q.toString();
+  const data=await providerJson({url:requested,method:'GET',fetchFn,sleep,signal,
    headers:{authorization:'Basic '+encoded,accept:'application/json'}});
   const rowsRaw=data?.value??data?.d?.results;
   if(!Array.isArray(rowsRaw)||rowsRaw.length>PAGE)throw bad('onec_unexpected_page');
@@ -164,6 +166,27 @@ export async function* onecOdataPages({connection,mapping,fetchFn,sleep,signal}=
   offset+=rows.length;
   if(offset>MAX_ROWS)throw bad('provider_record_limit_exceeded');
   yield {source:'1c',rows,complete:false};
+  const link=data?.['@odata.nextLink']||data?.['odata.nextLink']||data?.d?.__next;
+  if(link!==undefined&&link!==null){
+   if(typeof link!=='string'||link.length>1600)throw bad('onec_unsafe_next_link');
+   let u;try{u=new URL(link,requested)}catch{throw bad('onec_unsafe_next_link')}
+   const allowed=new Set(['$format','$top','$skip','$skiptoken','$select','$orderby']);
+   if(u.origin!==origin||u.pathname!==new URL(base).pathname||u.hash||
+      u.username||u.password||u.port||[...u.searchParams.keys()].some(k=>!allowed.has(k))||
+      u.searchParams.get('$select')&&u.searchParams.get('$select')!==fields.join(',')||
+      u.searchParams.get('$orderby')&&u.searchParams.get('$orderby')!==m.idField+' asc'||
+      seenLinks.has(u.toString())||u.toString()===requested)
+    throw bad('onec_unsafe_next_link');
+   // OData continuation tokens are provider-originated but must never redirect
+   // to a new host, entity, field selection or a token-leaking URL.
+   seenLinks.add(u.toString());
+   nextUrl=u.toString();
+   continue;
+  }
+  nextUrl=null;
+  const reported=Number(data?.d?.__count??data?.['@odata.count']);
+  if(Number.isInteger(reported)&&reported>offset&&rows.length<PAGE)
+   throw bad('onec_incomplete_scan');
   if(rows.length<PAGE){
    yield {source:'1c',rows:[],complete:true,total:offset,quality:'best_effort_full_scan'};
    return;
