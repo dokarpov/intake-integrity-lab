@@ -28,7 +28,7 @@ test('LIVE Postgres MCP reads persisted evidence with strictly authenticated ten
   await store.assess({tenantId:a,comparisonId:comparison.comparisonId,assessmentKey:'human-review-1',
    actorRef:'synthetic-human',assessment:'requires_verification',
    reason:'Synthetic contract documents disagree, check authoritative registry.'});
-  server=createServer(createReadOnlyMcpHandler({sourceComparisonStore:store,resourceAudience:RESOURCE,
+  server=createServer(createReadOnlyMcpHandler({sourceComparisonStore:store,resourceAudience:RESOURCE,authorizationServer:'https://verified.example',
    authenticator:{authenticate:async req=>{
     if(req.headers.authorization==='Bearer missing')throw Object.assign(new Error('revoked'),{statusCode:401});
     const owner=req.headers.authorization==='Bearer b'?b:a;
