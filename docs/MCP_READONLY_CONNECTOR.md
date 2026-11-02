@@ -25,13 +25,22 @@ Startup requires:
 
 The connector must use TLS end to end, managed secrets (never publish connection strings), credential revocation, explicit per-tenant lawful data-sharing scope and audit/incident logging. **MCP code does not itself prove or implement these infrastructure/legal controls.**
 
+## OAuth resource discovery implemented
+The server serves RFC 9728 metadata at `GET /.well-known/oauth-protected-resource/mcp`
+(and root metadata alias) and returns `WWW-Authenticate: Bearer resource_metadata=...`
+when a token is missing or has the wrong audience/scope. The metadata names the
+verified SaaS IdP issuer and the canonical `MCP_RESOURCE_AUDIENCE`. **The IdP
+must actually support OAuth 2.1 authorization-code + PKCE and resource-bound
+delegated tokens, and accept the client's registration mechanism**; the
+metadata endpoint cannot substitute for those capabilities.
+
 ## Connection with ChatGPT or Claude — additional required work
 A ChatGPT/Claude remote-connector UX is **not unlocked merely by running this server**. The MCP adapter accepts a separately audience-bound and scope-restricted signed **OIDC access bearer**; it does not issue tokens or implement OAuth 2.1 client discovery/registration, delegated consent, authorization-code + PKCE, access-token audience binding, refresh/revocation, resource metadata or OpenAI/Anthropic installation verification. Never paste a user's main SaaS token into a broadly shared connector configuration.
 
 Before externally enabling either client:
-1. Choose a customer IdP/auth-server able to issue *delegated, revocable, resource-specific* credentials for the MCP endpoint. Implement OAuth protected resource metadata/authorization-server discovery with a controlled client registration policy and connect/disconnect user consent.
+1. Choose a customer IdP/auth-server able to issue *delegated, revocable, resource-specific* credentials for the MCP endpoint. Implement authorization-server discovery with a controlled client registration policy and connect/disconnect user consent.
 2. Bind tokens to the exact MCP resource audience, enforce scopes (e.g. `evidence:read`, `evidence:values:read`) **and** per-request DB workspace roles. Do not rely on untrusted JWT tenant/roles or on global API keys.
-3. Add correct MCP 401 `WWW-Authenticate` challenge, OAuth callback/redirect allowlist, client-origin and DNS-rebinding defense, session/revocation tests, audit/access logging, and abuse/rate limits. Re-test ChatGPT and Claude independently with the provider's current client capabilities.
+3. Verify the implemented MCP 401 `WWW-Authenticate` challenge against the live IdP, OAuth callback/redirect allowlist, client-origin and DNS-rebinding defense, session/revocation tests, audit/access logging, and abuse/rate limits. Re-test ChatGPT and Claude independently with the provider's current client capabilities.
 4. Provision production tenant-isolated source connectors and data-retention decisions; the existing CSV synthetic comparison is **not** production evidence or a connected 1C/Bitrix24 integration.
 5. Roll out behind a separate feature flag and customer approval; run a real-account read-only smoke and security/privacy review. No write tools in Release 1.
 
