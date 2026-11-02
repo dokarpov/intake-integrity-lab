@@ -67,7 +67,13 @@ CREATE TABLE IF NOT EXISTS sales_source_sync_pages (
  tenant_id text NOT NULL,run_id uuid NOT NULL,
  source text NOT NULL CHECK(source IN ('1c','bitrix24')),
  page_index integer NOT NULL CHECK(page_index>=0 AND page_index<20000),
- content_sha256 char(64) NOT NULL CHECK(content_sha256 ~ '^[0-9a-f]{64}
+ content_sha256 char(64) NOT NULL CHECK(length(content_sha256)=64),
+ record_count integer NOT NULL CHECK(record_count BETWEEN 0 AND 100),
+ PRIMARY KEY(tenant_id,run_id,source,page_index),
+ FOREIGN KEY(tenant_id,run_id) REFERENCES sales_source_sync_runs(tenant_id,run_id) ON DELETE RESTRICT
+);
+
+CREATE TABLE IF NOT EXISTS sales_source_sync_findings (
  tenant_id text NOT NULL,run_id uuid NOT NULL,
  finding_id uuid NOT NULL DEFAULT gen_random_uuid(),
  code text NOT NULL CHECK(code IN ('unmapped_source_record',
