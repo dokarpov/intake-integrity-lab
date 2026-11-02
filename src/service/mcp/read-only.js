@@ -1,6 +1,3 @@
-import {randomUUID} from 'node:crypto';
-import {requirePermission} from '../auth/rbac.js';
-
 // Stateless 2025-11-25 Streamable HTTP (JSON responses). All calls must carry
 // an independently verified SaaS OIDC bearer. This is NOT an OAuth issuer.
 // ChatGPT/Claude interactive account connection requires separately reviewed
@@ -74,7 +71,10 @@ function argumentsFor(name,args){
   (Object.keys(args).length!==1||typeof args.comparisonId!=='string'||!uuid.test(args.comparisonId)))return null;
  return args;
 }
-export function createReadOnlyMcpHandler({authenticator,sourceComparisonStore,rateLimiter,allowedOrigins=[]}={}){
+export function createReadOnlyMcpHandler({authenticator,sourceComparisonStore,rateLimiter,
+ resourceAudience,allowedOrigins=[]}={}){
+ if(typeof resourceAudience!=='string'||!resourceAudience.startsWith('https://'))
+  throw Error('mcp_resource_audience_required');
  if(typeof authenticator?.authenticate!=='function'||!sourceComparisonStore)
   throw Error('mcp_authenticated_store_required');
  const origins=new Set(allowedOrigins);
@@ -92,11 +92,17 @@ export function createReadOnlyMcpHandler({authenticator,sourceComparisonStore,ra
   let principal;
   try{principal=await authenticator.authenticate(req)}
   catch(e){return reject(res,e?.statusCode===403?403:401,'mcp_authentication_required')}
+  const claims=principal?.claims||{};
+  const audiences=Array.isArray(claims.aud)?claims.aud:[claims.aud];
+  const scopes=new Set([
+   ...(typeof claims.scope==='string'?claims.scope.split(/\\s+/):[]),
+   ...(Array.isArray(claims.scp)?claims.scp:[])
+  ]);
   if(!principal?.tenantId||!principal?.id||!principal?.permissions?.has('review.read')||
-     principal.claims?.dev||principal.claims?.sandbox||
-     typeof principal.claims?.iss!=='string'||
-     principal.claims.iss==='urn:intake:legacy:unverified'){
-   return reject(res,403,'mcp_verified_reviewer_required');
+     claims.dev||claims.sandbox||typeof claims.iss!=='string'||
+     claims.iss==='urn:intake:legacy:unverified'||
+     !audiences.includes(resourceAudience)||!scopes.has('evidence:read')){
+   return reject(res,403,'mcp_verified_scoped_reviewer_required');
   }
   const rl=rateLimiter?.check('mcp:'+principal.tenantId+':'+principal.id,{limit:30,windowMs:60_000});
   if(rl&&!rl.allowed)return reject(res,429,'rate_limit_exceeded');
@@ -121,14 +127,16 @@ export function createReadOnlyMcpHandler({authenticator,sourceComparisonStore,ra
   if(req.headers['mcp-protocol-version']&&req.headers['mcp-protocol-version']!==VERSION)
    return reject(res,400,'unsupported_mcp_version');
   if(request.method==='ping')return output(res,200,rpc(id,{}));
-  if(request.method==='tools/list')return output(res,200,rpc(id,{tools}));
+  if(request.method==='tools/list')return output(res,200,rpc(id,{tools:tools.filter(t=>
+    (t.name!=='list_comparison_assessments'||(principal.permissions.has('audit.read')&&
+      scopes.has('evidence:values:read'))))}));
   if(request.method!=='tools/call')return output(res,200,rpcError(id,-32601,'Method not found'));
   const name=request.params?.name;
   if(typeof name!=='string'||!toolMap.has(name))
    return output(res,200,rpcError(id,-32602,'Unknown tool'));
   let args;try{args=argumentsFor(name,request.params?.arguments??{})}catch{args=null}
   if(args===null)return output(res,200,rpcError(id,-32602,'Invalid tool arguments'));
-  const hasAudit=principal.permissions.has('audit.read');
+  const hasAudit=principal.permissions.has('audit.read')&&scopes.has('evidence:values:read');
   if((name==='list_comparison_assessments'||args.includeValues===true)&&!hasAudit)
    return output(res,200,{...rpc(id,{content:[{type:'text',text:'Additional audit.read permission required.'}],isError:true})});
   try{
