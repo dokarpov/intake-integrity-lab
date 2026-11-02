@@ -135,6 +135,7 @@ if(mcpEnabled&&
   (process.env.NODE_ENV!=='production'||!workspaceDirectoryEnabled||
    !workspaceMembershipEnforced||!integrityEnabled||stagingTokenAuth||
    !process.env.MCP_RESOURCE_AUDIENCE||!process.env.MCP_RESOURCE_AUDIENCE.startsWith('https://')||
+   typeof config.auth?.issuer!=='string'||!config.auth.issuer.startsWith('https://')||
    !process.env.MCP_DATABASE_URL||process.env.MCP_DATABASE_URL===process.env.DATABASE_URL))
  throw Error('mcp_requires_verified_production_workspace_and_separate_readonly_db');
 let mcpPool=null;
@@ -146,7 +147,7 @@ if(mcpEnabled){
 }
 const mcpHandler=mcpEnabled?createReadOnlyMcpHandler({
  authenticator,sourceComparisonStore:new PostgresSourceComparison({pool:mcpPool}),
- rateLimiter:limiter,resourceAudience:process.env.MCP_RESOURCE_AUDIENCE
+ rateLimiter:limiter,resourceAudience:process.env.MCP_RESOURCE_AUDIENCE,authorizationServer:config.auth.issuer
 }):null;
 const api=createApiHandler({
   authenticator,runtimes,policies,rateLimiter:limiter,intakeConfig:config.intake||{},
@@ -161,7 +162,10 @@ const sourceTestHtml=integrityEnabled?readFileSync(resolve(root,'demo/source-com
 const stagingWriteGate=createStagingWriteGate();
 const server=createServer(async(req,res)=>{
   if(stagingWriteGate(req,res))return;
-  if(mcpHandler&&new URL(req.url,'http://service.local').pathname==='/mcp')
+  if(mcpHandler&&[
+    '/mcp','/.well-known/oauth-protected-resource',
+    '/.well-known/oauth-protected-resource/mcp'
+   ].includes(new URL(req.url,'http://service.local').pathname))
     return mcpHandler(req,res);
   if(req.method==='POST'&&req.url==='/api/workspaces/registration'&&workspaceRegistration)
     return workspaceRegistration(req,res);
