@@ -18,6 +18,7 @@ for(const vp of viewports){
 
   const layout=await page.evaluate(()=>({
     title:document.title,
+    version:document.querySelector('meta[name="app-version"]')?.content,
     scrollWidth:document.documentElement.scrollWidth,
     viewport:innerWidth,
     brand:document.querySelector('.brand')?.textContent || '',
@@ -25,7 +26,7 @@ for(const vp of viewports){
     navCount:document.querySelectorAll('.nav button').length
   }));
   if(layout.title!=='Acorde · Control plane') throw new Error(vp.name+': title missing');
-  if(!layout.brand.includes('v0.6.2')) throw new Error(vp.name+': stale demo version');
+  if(layout.version!=='0.6.2') throw new Error(vp.name+': stale demo version');
   if(layout.scrollWidth>layout.viewport+2) throw new Error(vp.name+': horizontal overflow '+layout.scrollWidth+'>'+layout.viewport);
   if(layout.active!=='overview') throw new Error(vp.name+': overview not active');
   if(layout.navCount<7) throw new Error(vp.name+': operator navigation incomplete');
