@@ -68,6 +68,10 @@ export function createApiHandler({authenticator,runtimes,policies,rateLimiter,in
         if(sourceSyncStore&&url.pathname.startsWith('/api/integrity/sources/')){
           if(req.method==='POST'&&url.pathname==='/api/integrity/sources/sync'){
             requirePermission(principal,'integration.sync');
+            const syncLimit=rateLimiter?.check('source-sync:'+principal.tenantId,
+              {limit:4,windowMs:60*60*1000});
+            if(syncLimit&&!syncLimit.allowed)throw Object.assign(
+              new Error('source_sync_rate_limited'),{statusCode:429});
             if(!sourceSyncVault)throw Object.assign(new Error('source_sync_vault_not_configured'),{statusCode:503});
             const grant=await sourceSyncVault.getApproved(principal.tenantId);
             const queued=await sourceSyncStore.enqueue({tenantId:principal.tenantId,
