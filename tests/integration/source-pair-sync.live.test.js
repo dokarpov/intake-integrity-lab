@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 import {readFileSync} from 'node:fs';
-import {PostgresSourcePairSync} from '../../src/sales-integrity/source-pair-sync.js';
+import {PostgresSourcePairSync,ReadOnlySourceSyncWorker} from '../../src/sales-integrity/source-pair-sync.js';
 
 const tenant=()=>'sync_'+randomUUID().replaceAll('-','');
 const row=(id,sharedKey,company='Example Studio',type='OOO')=>({
@@ -117,6 +117,69 @@ test('LIVE PostgreSQL >100-row paired source sync, atomic publication, review fi
    await assert.rejects(()=>sync.stagePage({tenantId:a,runId:claimed.runId,
     workerId:'worker-2',source:'1c',pageIndex:0,rows:[row('x','y')]}),
     /sync_lease_or_owner_invalid/);
+  });
+  await t.test('durable worker reads BOTH real provider protocols and publishes only after success',async()=>{
+   const a=tenant();
+   const q=await sync.enqueue({tenantId:a,actorRef:'authorized-integrator',
+    mappingVersion:'mapping-pilot-v1'});
+   const cfg={permissionGranted:true,grantId:'11111111-1111-4111-8111-111111111111',
+    mappingVersion:'mapping-pilot-v1',
+    sources:{
+     '1c':{connection:{origin:'https://erp.example.com/',allowHosts:['erp.example.com'],
+      entity:'Catalog_Counterparties',username:'readonly',password:'fictional-secret'},
+      mapping:{source:'1c',version:'mapping-pilot-v1',idField:'Ref_Key',
+       nameField:'Description',sharedKeyField:'ExternalAccountKey'}},
+     bitrix24:{connection:{origin:'https://pilot.bitrix24.com/',
+      allowHosts:['pilot.bitrix24.com'],accessToken:'fictional-token'},
+      mapping:{source:'bitrix24',version:'mapping-pilot-v1',idField:'ID',
+       nameField:'TITLE',sharedKeyField:'UF_CRM_EXTERNAL_ID'}}
+    }};
+   const requests=[];
+   const vault={getApproved:async()=>cfg};
+   const runner=new ReadOnlySourceSyncWorker({store:sync,vault,fetchFn:async(url,options)=>{
+    requests.push({url,method:options.method});
+    if(url.includes('Catalog_Counterparties'))
+     return new Response(JSON.stringify({value:[{
+      Ref_Key:'1',Description:'Example Studio',ExternalAccountKey:'shared'}]}));
+    if(url.includes('crm.company.list'))
+     return new Response(JSON.stringify({result:[{
+      ID:'3',TITLE:'Different Studio',UF_CRM_EXTERNAL_ID:'shared'}],total:1}));
+    throw Error('Unexpected endpoint');
+   }});
+   const finished=await runner.processOne({tenantId:a,workerId:'worker-end-to-end'});
+   assert.equal(finished.status,'published');
+   assert.equal(finished.counts.field_difference,1);
+   const report=await sync.latestReport({tenantId:a});
+   assert.equal(report.counts.onecRecords,1);
+   assert.equal(report.counts.bitrix24Records,1);
+   assert.equal(requests.length,2);
+   assert(requests.every(x=>x.method==='GET'||x.method==='POST'));
+   assert(requests.every(x=>!x.url.includes('fictional-token')));
+  });
+  await t.test('second provider rejection cannot publish the first provider alone',async()=>{
+   const a=tenant();
+   await sync.enqueue({tenantId:a,actorRef:'authorized-integrator',
+    mappingVersion:'mapping-pilot-v1'});
+   const cfg={permissionGranted:true,grantId:'11111111-1111-4111-8111-111111111111',
+    mappingVersion:'mapping-pilot-v1',sources:{
+     '1c':{connection:{origin:'https://erp.example.com/',allowHosts:['erp.example.com'],
+      entity:'Catalog_Counterparties',username:'readonly',password:'fictional-secret'},
+      mapping:{source:'1c',version:'mapping-pilot-v1',idField:'Ref_Key',
+       nameField:'Description',sharedKeyField:'ExternalAccountKey'}},
+     bitrix24:{connection:{origin:'https://pilot.bitrix24.com/',
+      allowHosts:['pilot.bitrix24.com'],accessToken:'fictional-token'},
+      mapping:{source:'bitrix24',version:'mapping-pilot-v1',idField:'ID',
+       nameField:'TITLE',sharedKeyField:'UF_CRM_EXTERNAL_ID'}}
+    }};
+   const runner=new ReadOnlySourceSyncWorker({store:sync,vault:{getApproved:async()=>cfg},
+    fetchFn:async url=>url.includes('Catalog_')?
+     new Response(JSON.stringify({value:[{Ref_Key:'1',Description:'Source A',
+      ExternalAccountKey:'key'}]})):
+     new Response(JSON.stringify({error:'ACCESS_DENIED'}),{status:403})});
+   const result=await runner.processOne({tenantId:a,workerId:'worker-failure'});
+   assert.equal(result.status,'failed');
+   assert.equal(result.failureCode,'provider_permission_denied');
+   assert.equal(await sync.latestReport({tenantId:a}),null);
   });
  }finally{await pool.end()}
 });
