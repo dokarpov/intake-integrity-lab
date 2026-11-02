@@ -25,20 +25,25 @@ export async function assertSourceSyncDbRole({pool,role}={}){
   invalid('source_sync_privileged_role_forbidden');
  const rows=p.rows||[];
  if(rows.length!==tables.length||rows.some(x=>!x.rls||x.owns_table||
-   !x.can_select||x.can_delete))
+   x.can_delete))
   invalid('source_sync_table_rls_unsafe');
  if(role==='api'){
   const queue=rows.find(x=>x.name==='sales_source_sync_runs');
-  if(!queue.can_insert||queue.can_update||rows.some(x=>x.name!==queue.name&&
-    (x.can_insert||x.can_update)))
-   invalid('source_sync_api_db_grants_unsafe');
+  const findings=rows.find(x=>x.name==='sales_source_sync_findings');
+  if(!queue?.can_select||!queue.can_insert||queue.can_update||
+     !findings?.can_select||rows.some(x=>x.name!==queue.name&&
+       (x.can_insert||x.can_update))||
+     rows.some(x=>!['sales_source_sync_runs','sales_source_sync_findings'].includes(x.name)&&
+       x.can_select))
+    invalid('source_sync_api_db_grants_unsafe');
  }
  if(role==='worker'){
-  const wanted=new Set(tables);
-  if(rows.some(x=>wanted.has(x.name)&&!x.can_insert)||
-   !rows.find(x=>x.name==='sales_source_sync_runs')?.can_update||
-   rows.some(x=>x.name!=='sales_source_sync_runs'&&x.can_update))
-   invalid('source_sync_worker_db_grants_unsafe');
+  const queue=rows.find(x=>x.name==='sales_source_sync_runs');
+  if(!queue?.can_select||queue.can_insert||!queue.can_update||
+     rows.some(x=>!x.can_select||
+       (x.name!=='sales_source_sync_runs'&&!x.can_insert)||
+       (x.name!=='sales_source_sync_runs'&&x.can_update)))
+    invalid('source_sync_worker_db_grants_unsafe');
  }
  return {ok:true,role,tenantRls:true};
 }
