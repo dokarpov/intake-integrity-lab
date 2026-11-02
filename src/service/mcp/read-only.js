@@ -15,16 +15,16 @@ const tools=[
   annotations:{title:'Read review evidence',readOnlyHint:true,destructiveHint:false,idempotentHint:true,openWorldHint:false}}
 ];
 const toolMap=new Map(tools.map(t=>[t.name,t]));
-function output(res,status,body){
+function output(res,status,body,extraHeaders={}){
  const bytes=JSON.stringify(body);
  res.writeHead(status,{'content-type':'application/json; charset=utf-8','content-length':Buffer.byteLength(bytes),
   'cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'no-referrer',
-  'x-frame-options':'DENY','vary':'authorization'});
+  'x-frame-options':'DENY','vary':'authorization',...extraHeaders});
  res.end(bytes);
 }
 function rpc(id,result){return {jsonrpc:'2.0',id,result}}
 function rpcError(id,code,message){return {jsonrpc:'2.0',id,error:{code,message}}}
-function reject(res,code,message){return output(res,code,{error:message})}
+function reject(res,code,message,headers={}){return output(res,code,{error:message},headers)}
 function shape(x){return x&&typeof x==='object'&&!Array.isArray(x)}
 async function parseBody(req){
  const len=Number(req.headers['content-length']||0);
@@ -72,13 +72,29 @@ function argumentsFor(name,args){
  return args;
 }
 export function createReadOnlyMcpHandler({authenticator,sourceComparisonStore,rateLimiter,
- resourceAudience,allowedOrigins=[]}={}){
- if(typeof resourceAudience!=='string'||!resourceAudience.startsWith('https://'))
+ resourceAudience,authorizationServer,allowedOrigins=[]}={}){
+ const resourceUrl=new URL(resourceAudience);
+ if(resourceUrl.protocol!=='https:'||resourceUrl.pathname!=='/mcp'||
+    resourceUrl.search||resourceUrl.hash)
   throw Error('mcp_resource_audience_required');
+ if(typeof authorizationServer!=='string'||!authorizationServer.startsWith('https://'))
+  throw Error('mcp_authorization_server_required');
+ const resourceMetadataUrl=resourceUrl.origin+'/.well-known/oauth-protected-resource/mcp';
+ const authorizeChallenge={ 'www-authenticate':
+   'Bearer resource_metadata="'+resourceMetadataUrl+'", scope="evidence:read"' };
+ const publicMetadata={resource:resourceAudience,authorization_servers:[authorizationServer],
+   scopes_supported:['evidence:read','evidence:values:read']};
  if(typeof authenticator?.authenticate!=='function'||!sourceComparisonStore)
   throw Error('mcp_authenticated_store_required');
  const origins=new Set(allowedOrigins);
  return async(req,res)=>{
+  const pathname=new URL(req.url,'http://service.local').pathname;
+  if(req.method==='GET'&&
+    (pathname==='/.well-known/oauth-protected-resource/mcp'||
+     pathname==='/.well-known/oauth-protected-resource')){
+   return output(res,200,publicMetadata,{'access-control-allow-origin':'*'});
+  }
+  if(pathname!=='/mcp')return reject(res,404,'not_found');
   if(req.method!=='POST')return reject(res,405,'mcp_post_only');
   // A normal remote MCP client has no browser Origin header. Cross-origin browser
   // requests and DNS rebinding must not be able to turn a bearer into a CSRF call.
@@ -91,7 +107,10 @@ export function createReadOnlyMcpHandler({authenticator,sourceComparisonStore,ra
   // session can retain a stale workspace or revoked role.
   let principal;
   try{principal=await authenticator.authenticate(req)}
-  catch(e){return reject(res,e?.statusCode===403?403:401,'mcp_authentication_required')}
+  catch(e){const status=e?.statusCode===403?403:401;
+   return reject(res,status,'mcp_authentication_required',
+     status===401?authorizeChallenge:{});
+  }
   const claims=principal?.claims||{};
   const audiences=Array.isArray(claims.aud)?claims.aud:[claims.aud];
   const scopes=new Set([
@@ -100,9 +119,11 @@ export function createReadOnlyMcpHandler({authenticator,sourceComparisonStore,ra
   ]);
   if(!principal?.tenantId||!principal?.id||!principal?.permissions?.has('review.read')||
      claims.dev||claims.sandbox||typeof claims.iss!=='string'||
-     claims.iss==='urn:intake:legacy:unverified'||
-     !audiences.includes(resourceAudience)||!scopes.has('evidence:read')){
+     claims.iss==='urn:intake:legacy:unverified'){
    return reject(res,403,'mcp_verified_scoped_reviewer_required');
+  }
+  if(!audiences.includes(resourceAudience)||!scopes.has('evidence:read')){
+   return reject(res,401,'mcp_insufficient_token_scope_or_audience',authorizeChallenge);
   }
   const rl=rateLimiter?.check('mcp:'+principal.tenantId+':'+principal.id,{limit:30,windowMs:60_000});
   if(rl&&!rl.allowed)return reject(res,429,'rate_limit_exceeded');
