@@ -21,6 +21,9 @@ import { PostgresSalesIntegrity } from '../src/sales-integrity/postgres-integrit
 import { SandboxDecisionEvidence } from '../src/sales-integrity/sandbox-evidence.js';
 import { SandboxCrmSimulator } from '../src/sales-integrity/sandbox-crm.js';
 import { PostgresSourceComparison } from '../src/sales-integrity/source-comparison.js';
+import { PostgresSourcePairSync } from '../src/sales-integrity/source-pair-sync.js';
+import { AwsSourceConnectionVault } from '../src/sales-integrity/source-sync-vault.js';
+import { assertSourceSyncDbRole } from '../src/sales-integrity/source-sync-preflight.js';
 import { HttpIdentityResolver } from '../src/integrations/identity/http-resolver.js';
 
 const here=dirname(fileURLToPath(import.meta.url)), root=resolve(here,'..');
@@ -120,6 +123,23 @@ const sourceComparisonStore=integrityEnabled?new PostgresSourceComparison({pool}
 const integrityStore=integrityEnabled?new PostgresSalesIntegrity({
   pool,fingerprintSecret:process.env.INTEGRITY_FINGERPRINT_HMAC_SECRET
 }):null;
+// Provider sync stays disabled until a distinct secure tenant DB role and
+// server-owned AWS secret vault are verified. Staging shared tokens never work.
+const sourceSyncEnabled=process.env.SOURCE_SYNC_ENABLED==='true';
+if(sourceSyncEnabled&&(!integrityEnabled||process.env.NODE_ENV!=='production'||
+    !workspaceDirectoryEnabled||!workspaceMembershipEnforced||stagingTokenAuth||
+    !process.env.SOURCE_SYNC_API_DATABASE_URL||
+    process.env.SOURCE_SYNC_API_DATABASE_URL===process.env.DATABASE_URL))
+ throw Error('source_sync_requires_production_oidc_and_separate_db');
+let sourceSyncApiPool=null,sourceSyncStore=null,sourceSyncVault=null;
+if(sourceSyncEnabled){
+ const {Pool}=await import('pg');
+ sourceSyncApiPool=new Pool({connectionString:process.env.SOURCE_SYNC_API_DATABASE_URL,
+  max:4,statement_timeout:Number(process.env.PG_STATEMENT_TIMEOUT_MS||10000)});
+ await assertSourceSyncDbRole({pool:sourceSyncApiPool,role:'api'});
+ sourceSyncStore=new PostgresSourcePairSync({pool:sourceSyncApiPool});
+ sourceSyncVault=await AwsSourceConnectionVault.fromEnvironment();
+}
 const sandboxEnabled=integrityEnabled&&process.env.NODE_ENV==='staging'&&process.env.INTEGRITY_SANDBOX_ENABLED==='true';
 if(sandboxEnabled&&!process.env.SANDBOX_EVIDENCE_HMAC_SECRET)throw new Error('sandbox_evidence_secret_required');
 const sandboxEvidenceProvider=sandboxEnabled?new SandboxDecisionEvidence({
@@ -129,7 +149,7 @@ const sandboxCrmSimulator=sandboxEnabled?new SandboxCrmSimulator({pool,integrity
 const api=createApiHandler({
   authenticator,runtimes,policies,rateLimiter:limiter,intakeConfig:config.intake||{},
   oneCConfig,identityResolver,integrityStore,
-  integrityEvidenceVerifier:sandboxEvidenceProvider,sandboxEvidenceProvider,sandboxCrmSimulator,sourceComparisonStore
+  integrityEvidenceVerifier:sandboxEvidenceProvider,sandboxEvidenceProvider,sandboxCrmSimulator,sourceComparisonStore,sourceSyncStore,sourceSyncVault
 });
 const consoleHtml=readFileSync(resolve(root,'demo/index.html'),'utf8');
 const integrityTestHtml=integrityEnabled?readFileSync(resolve(root,'demo/integrity.html'),'utf8'):null;
@@ -171,4 +191,4 @@ const server=createServer(async(req,res)=>{
   return api(req,res);
 });
 const port=Number(process.env.PORT||8787),host=process.env.HOST||'127.0.0.1';server.listen(port,host,()=>process.stdout.write(`intake-integrity v0.6 listening on http://${host}:${port}\n`));
-const shutdown=async()=>{server.close();if(workspaceBootstrapPool)await workspaceBootstrapPool.end();if(pool)await pool.end();};process.on('SIGTERM',shutdown);process.on('SIGINT',shutdown);
+const shutdown=async()=>{server.close();if(workspaceBootstrapPool)await workspaceBootstrapPool.end();if(sourceSyncApiPool)await sourceSyncApiPool.end();if(pool)await pool.end();};process.on('SIGTERM',shutdown);process.on('SIGINT',shutdown);
