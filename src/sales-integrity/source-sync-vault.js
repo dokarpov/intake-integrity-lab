@@ -43,7 +43,7 @@ export class AwsSourceConnectionVault {
    throw invalid('source_sync_grant_revoked');
   for(const source of ['1c','bitrix24']){
    const item=value.sources[source];
-   if(item.mapping?.source!==source||
+   if(item.mapping?.source!==source||item.mapping?.version!==value.mappingVersion||
       !Array.isArray(item.connection?.allowHosts)||
       item.connection.allowHosts.length<1)
     throw invalid('source_vault_config_invalid');
