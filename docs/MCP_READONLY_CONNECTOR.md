@@ -20,13 +20,13 @@ MCP is **disabled by default**. Set `MCP_READONLY_ENABLED=true` only after the s
 
 Startup requires:
 - `NODE_ENV=production`, verified `WORKSPACE_DIRECTORY_AUTH_ENABLED=true`, enforced `WORKSPACE_MEMBERSHIP_ENFORCED=true`, configured SaaS OIDC verifier, and `INTEGRITY_PG_V2_ENABLED=true`.
-- A separate `MCP_DATABASE_URL`, **not** the main `DATABASE_URL`. It must connect using a dedicated login role with `SELECT` and schema usage only on four source-evidence tables. It must not own tables, bypass RLS, have CREATE ROLE or any INSERT/UPDATE/DELETE permission.
+- `MCP_RESOURCE_AUDIENCE` set to the canonical HTTPS URL of the protected MCP resource. The bearer must have a matching signed `aud` and `evidence:read` scope; detailed field values and assessments additionally require `evidence:values:read` and `audit.read`. A normal app login token must not qualify.\n- A separate `MCP_DATABASE_URL`, **not** the main `DATABASE_URL`. It must connect using a dedicated login role with `SELECT` and schema usage only on four source-evidence tables. It must not own tables, bypass RLS, have CREATE ROLE or any INSERT/UPDATE/DELETE permission.
 - Migrations 005 (source comparison), 007 (tenant RLS) and 006/009/010 (issuer-bound workspaces) applied and independently tested. Production role preflight checks RLS on all four source evidence tables. Existing production runtime preflight also checks workspace directory permissions.
 
 The connector must use TLS end to end, managed secrets (never publish connection strings), credential revocation, explicit per-tenant lawful data-sharing scope and audit/incident logging. **MCP code does not itself prove or implement these infrastructure/legal controls.**
 
 ## Connection with ChatGPT or Claude — additional required work
-A ChatGPT/Claude remote-connector UX is **not unlocked merely by running this server**. The MCP adapter accepts the SaaS's existing signed **OIDC access bearer**; it does not issue tokens or implement OAuth 2.1 client discovery/registration, delegated consent, authorization-code + PKCE, access-token audience binding, refresh/revocation, resource metadata or OpenAI/Anthropic installation verification. Never paste a user's main SaaS token into a broadly shared connector configuration.
+A ChatGPT/Claude remote-connector UX is **not unlocked merely by running this server**. The MCP adapter accepts a separately audience-bound and scope-restricted signed **OIDC access bearer**; it does not issue tokens or implement OAuth 2.1 client discovery/registration, delegated consent, authorization-code + PKCE, access-token audience binding, refresh/revocation, resource metadata or OpenAI/Anthropic installation verification. Never paste a user's main SaaS token into a broadly shared connector configuration.
 
 Before externally enabling either client:
 1. Choose a customer IdP/auth-server able to issue *delegated, revocable, resource-specific* credentials for the MCP endpoint. Implement OAuth protected resource metadata/authorization-server discovery with a controlled client registration policy and connect/disconnect user consent.
