@@ -14,6 +14,7 @@ import { createWorkspaceRegistrationHandler } from '../src/service/auth/workspac
 import { SlidingWindowRateLimiter } from '../src/service/http/rate-limit.js';
 import { createStagingWriteGate } from '../src/service/http/staging-write-gate.js';
 import { createReadOnlyMcpHandler } from '../src/service/mcp/read-only.js';
+import { assertMcpReadOnlyDatabaseBoundary } from '../src/service/mcp/production-boundary.js';
 import { ServicePolicyRegistry } from '../src/service/policies.js';
 import { TenantRuntimeRegistry } from '../src/service/runtime.js';
 import { AwsKmsHmacPseudonymizer } from '../src/compliance/pseudonymizer-kms.js';
@@ -132,10 +133,19 @@ const sandboxCrmSimulator=sandboxEnabled?new SandboxCrmSimulator({pool,integrity
 const mcpEnabled=process.env.MCP_READONLY_ENABLED==='true';
 if(mcpEnabled&&
   (process.env.NODE_ENV!=='production'||!workspaceDirectoryEnabled||
-   !workspaceMembershipEnforced||!integrityEnabled||!sourceComparisonStore||stagingTokenAuth))
- throw Error('mcp_requires_verified_production_workspace_and_source_evidence');
+   !workspaceMembershipEnforced||!integrityEnabled||stagingTokenAuth||
+   !process.env.MCP_DATABASE_URL||process.env.MCP_DATABASE_URL===process.env.DATABASE_URL))
+ throw Error('mcp_requires_verified_production_workspace_and_separate_readonly_db');
+let mcpPool=null;
+if(mcpEnabled){
+ const {Pool}=await import('pg');
+ mcpPool=new Pool({connectionString:process.env.MCP_DATABASE_URL,max:4,
+  statement_timeout:Number(process.env.PG_STATEMENT_TIMEOUT_MS||10000)});
+ await assertMcpReadOnlyDatabaseBoundary({pool:mcpPool});
+}
 const mcpHandler=mcpEnabled?createReadOnlyMcpHandler({
- authenticator,sourceComparisonStore,rateLimiter:limiter
+ authenticator,sourceComparisonStore:new PostgresSourceComparison({pool:mcpPool}),
+ rateLimiter:limiter
 }):null;
 const api=createApiHandler({
   authenticator,runtimes,policies,rateLimiter:limiter,intakeConfig:config.intake||{},
@@ -184,4 +194,4 @@ const server=createServer(async(req,res)=>{
   return api(req,res);
 });
 const port=Number(process.env.PORT||8787),host=process.env.HOST||'127.0.0.1';server.listen(port,host,()=>process.stdout.write(`intake-integrity v0.6 listening on http://${host}:${port}\n`));
-const shutdown=async()=>{server.close();if(workspaceBootstrapPool)await workspaceBootstrapPool.end();if(pool)await pool.end();};process.on('SIGTERM',shutdown);process.on('SIGINT',shutdown);
+const shutdown=async()=>{server.close();if(workspaceBootstrapPool)await workspaceBootstrapPool.end();if(mcpPool)await mcpPool.end();if(pool)await pool.end();};process.on('SIGTERM',shutdown);process.on('SIGINT',shutdown);
