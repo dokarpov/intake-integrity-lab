@@ -79,6 +79,30 @@ test('1C OData3 GET traversal limits entity path and credentials to approved ori
   mapping:onecMapping,fetchFn:async()=>{throw Error('must not call')}})),
   /onec_entity_not_approved/);
 });
+test('1C OData continuation supports approved same-entity links and rejects SSRF and loops',async()=>{
+ const valid=[];
+ const reader=onecOdataPages({connection:cConfig,mapping:onecMapping,
+  fetchFn:async(url)=>{
+   valid.push(url);
+   if(valid.length===1)return response({d:{results:[{Ref_Key:'1',
+    Description:'Pilot first',ExternalAccountKey:'key-1'}],
+    __next:'https://erp.example.com/odata/standard.odata/Catalog_Counterparties?$skip=1'}});
+   return response({d:{results:[{Ref_Key:'2',Description:'Pilot second',
+    ExternalAccountKey:'key-2'}]}});
+  }});
+ const items=await consume(reader);
+ assert.equal(items.length,3);
+ assert.equal(items[2].total,2);
+ assert.equal(valid.length,2);
+ assert(valid.every(x=>x.startsWith('https://erp.example.com/')));
+ for(const link of ['https://evil.example/odata/standard.odata/Catalog_Counterparties',
+  'https://erp.example.com/odata/standard.odata/Catalog_Admin',
+  'https://erp.example.com/odata/standard.odata/Catalog_Counterparties?auth=secret']){
+  await assert.rejects(()=>consume(onecOdataPages({connection:cConfig,
+   mapping:onecMapping,fetchFn:async()=>response({d:{results:[],
+    __next:link}})})),/onec_unsafe_next_link/,link);
+ }
+});
 test('Provider 401, 403, failed JSON and 429 retries never leak response text or tokens',async()=>{
  for(const [status,expected] of [[401,'provider_authentication_expired'],
   [403,'provider_permission_denied']]){
