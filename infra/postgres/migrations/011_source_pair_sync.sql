@@ -19,8 +19,10 @@ CREATE TABLE IF NOT EXISTS sales_source_sync_runs (
  run_id uuid NOT NULL DEFAULT gen_random_uuid(),
  run_key text NOT NULL CHECK(length(run_key) BETWEEN 1 AND 160),
  mapping_version text NOT NULL CHECK(length(mapping_version) BETWEEN 1 AND 100),
- status text NOT NULL DEFAULT 'collecting'
-   CHECK(status IN ('collecting','failed','published')),
+ status text NOT NULL DEFAULT 'queued'
+   CHECK(status IN ('queued','collecting','failed','published')),
+ lease_owner text,
+ lease_until timestamptz,
  actor_ref text NOT NULL CHECK(length(actor_ref) BETWEEN 1 AND 255),
  started_at timestamptz NOT NULL DEFAULT clock_timestamp(),
  completed_at timestamptz,
