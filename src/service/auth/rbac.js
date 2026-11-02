@@ -6,8 +6,8 @@ export const SERVICE_ROLE=Object.freeze({
 });
 
 const P={
-  [SERVICE_ROLE.OWNER]:['workspace.manage','workspace.membership.manage'],
-  [SERVICE_ROLE.ADMIN]:['workspace.manage','workspace.membership.manage'],
+  [SERVICE_ROLE.OWNER]:['workspace.manage','workspace.membership.manage','integration.sync'],
+  [SERVICE_ROLE.ADMIN]:['workspace.manage','workspace.membership.manage','integration.sync'],
   [SERVICE_ROLE.SALES]:['intake.submit','intake.read'],
   [SERVICE_ROLE.REVIEWER]:['review.read','review.claim','review.resolve'],
   [SERVICE_ROLE.REVIEW_MANAGER]:['review.read','review.claim','review.resolve','review.assign','review.bulk_assign','review.capacity'],
@@ -15,7 +15,7 @@ const P={
   [SERVICE_ROLE.DPO]:['audit.read','audit.export','subject.read','dsr.read','dsr.create','dsr.transition','dsr.export'],
   [SERVICE_ROLE.SECURITY_ADMIN]:['audit.read','controls.read','controls.verify','approval.read','approval.act'],
   [SERVICE_ROLE.POLICY_ADMIN]:['policy.read','policy.propose','policy.approve','policy.publish'],
-  [SERVICE_ROLE.INTEGRATION_ADMIN]:['integration.read','integration.test','integration.retry']
+  [SERVICE_ROLE.INTEGRATION_ADMIN]:['integration.read','integration.test','integration.retry','integration.sync']
 };
 export function permissionsFor(roles=[]){const out=new Set();for(const role of roles||[])for(const x of P[role]||[])out.add(x);return out}
 export function requirePermission(principal,permission){if(!principal?.permissions?.has(permission))throw Object.assign(new Error('forbidden'),{statusCode:403,code:'forbidden',permission})}
