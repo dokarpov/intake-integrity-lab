@@ -134,6 +134,7 @@ const mcpEnabled=process.env.MCP_READONLY_ENABLED==='true';
 if(mcpEnabled&&
   (process.env.NODE_ENV!=='production'||!workspaceDirectoryEnabled||
    !workspaceMembershipEnforced||!integrityEnabled||stagingTokenAuth||
+   !process.env.MCP_RESOURCE_AUDIENCE||!process.env.MCP_RESOURCE_AUDIENCE.startsWith('https://')||
    !process.env.MCP_DATABASE_URL||process.env.MCP_DATABASE_URL===process.env.DATABASE_URL))
  throw Error('mcp_requires_verified_production_workspace_and_separate_readonly_db');
 let mcpPool=null;
@@ -145,7 +146,7 @@ if(mcpEnabled){
 }
 const mcpHandler=mcpEnabled?createReadOnlyMcpHandler({
  authenticator,sourceComparisonStore:new PostgresSourceComparison({pool:mcpPool}),
- rateLimiter:limiter
+ rateLimiter:limiter,resourceAudience:process.env.MCP_RESOURCE_AUDIENCE
 }):null;
 const api=createApiHandler({
   authenticator,runtimes,policies,rateLimiter:limiter,intakeConfig:config.intake||{},
