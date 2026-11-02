@@ -6,6 +6,7 @@ import {readFileSync} from 'node:fs';
 import {PostgresSourceComparison} from '../../src/sales-integrity/source-comparison.js';
 import {createReadOnlyMcpHandler} from '../../src/service/mcp/read-only.js';
 
+const RESOURCE='https://intake.example/mcp';
 const row=(id,type)=>({sourceRecordId:id,sharedKey:'fictional-shared-key',
  company:'Synthetic Studio',counterpartyType:type,contactRef:'synthetic-contact',
  ownerRef:'synthetic-owner',originalStatus:'Archived'});
@@ -27,12 +28,13 @@ test('LIVE Postgres MCP reads persisted evidence with strictly authenticated ten
   await store.assess({tenantId:a,comparisonId:comparison.comparisonId,assessmentKey:'human-review-1',
    actorRef:'synthetic-human',assessment:'requires_verification',
    reason:'Synthetic contract documents disagree, check authoritative registry.'});
-  server=createServer(createReadOnlyMcpHandler({sourceComparisonStore:store,
+  server=createServer(createReadOnlyMcpHandler({sourceComparisonStore:store,resourceAudience:RESOURCE,
    authenticator:{authenticate:async req=>{
     if(req.headers.authorization==='Bearer missing')throw Object.assign(new Error('revoked'),{statusCode:401});
     const owner=req.headers.authorization==='Bearer b'?b:a;
     return {id:'synthetic-verifier',tenantId:owner,
-     claims:{iss:'https://verified.example',sub:'synthetic-user',email_verified:true},
+     claims:{iss:'https://verified.example',sub:'synthetic-user',email_verified:true,
+      aud:RESOURCE,scope:'evidence:read evidence:values:read'},
      permissions:new Set(['review.read','audit.read'])};
    }}}));
   await new Promise(r=>server.listen(0,'127.0.0.1',r));
