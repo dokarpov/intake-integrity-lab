@@ -95,7 +95,7 @@ export function createReadOnlyMcpHandler({authenticator,sourceComparisonStore,ra
   const claims=principal?.claims||{};
   const audiences=Array.isArray(claims.aud)?claims.aud:[claims.aud];
   const scopes=new Set([
-   ...(typeof claims.scope==='string'?claims.scope.split(/\\s+/):[]),
+   ...(typeof claims.scope==='string'?claims.scope.split(/\s+/):[]),
    ...(Array.isArray(claims.scp)?claims.scp:[])
   ]);
   if(!principal?.tenantId||!principal?.id||!principal?.permissions?.has('review.read')||
