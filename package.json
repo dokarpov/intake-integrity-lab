@@ -1,9 +1,9 @@
 {
-  "name": "intake-integrity-lab",
+  "name": "acorde-lab",
   "version": "0.6.2",
   "private": false,
   "type": "module",
-  "description": "Authenticated multi-tenant sales intake integrity service with compliance ledger, DSR and policy workflows, team review operations, 1C delivery, and production integration-test harnesses.",
+  "description": "Acorde: authenticated multi-tenant sales identity and intake control service with compliance ledger, DSR, policy workflows, team review, 1C delivery and integration-test harnesses.",
   "scripts": {
     "test": "node --test tests/*.test.js",
     "demo": "python3 -m http.server 4173",

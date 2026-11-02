@@ -15,7 +15,7 @@ The least coupled contract is a small HTTP endpoint in the customer's 1C configu
 ```text
 Sales form / website / kiosk
           ↓
-Intake Integrity Layer
+Acorde Layer
   validate + audit + optional dedup
           ↓ POST JSON
 1C custom HTTP service

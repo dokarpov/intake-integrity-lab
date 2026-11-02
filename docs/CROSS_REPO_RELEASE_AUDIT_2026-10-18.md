@@ -1,4 +1,6 @@
-# Intake Integrity — cross-repository release audit (2026-10-18)
+# Acorde — cross-repository release audit (2026-10-18)
+
+> Historical record: this audit was prepared when the product was branded **Intake Integrity**. Repository slugs cited below retain their original names and live locations.
 
 ## Approved product contract
 An identity and enquiry-integrity checkpoint for sales workflows, not a CRM or social-listening product. Incoming enquiry → validate source and consent → identify safe matches → automatically deliver eligible clear records → route genuine uncertainty to a human → record decision and evidence → idempotent CRM/1C delivery with retry and recovery.

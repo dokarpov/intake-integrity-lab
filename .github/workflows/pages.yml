@@ -1,4 +1,4 @@
-name: Publish Intake Integrity website
+name: Publish Acorde website
 on:
   workflow_dispatch:
 

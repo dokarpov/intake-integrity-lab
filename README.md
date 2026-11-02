@@ -1,4 +1,4 @@
-# Intake Integrity Lab
+# Acorde Lab
 
 **A safer first record for sales systems.**
 
@@ -22,7 +22,7 @@ A working control plane for incoming enquiries, identity uncertainty, consent, h
 
 The first record often travels farther than anyone expects. A mistaken person, role or consent signal can affect CRM ownership, contracts, billing and access long after the form has been submitted.
 
-Intake Integrity treats **the moment of acceptance** as a decision boundary rather than assuming every new record is true.
+Acorde treats **the moment of acceptance** as a decision boundary rather than assuming every new record is true.
 
 **The principle:** when a system cannot establish what is safe, it should preserve context, make uncertainty explicit, and route a decision to the right owner.
 

@@ -1,4 +1,4 @@
-# Intake Integrity Lab — product validation
+# Acorde Lab — product validation
 
 This project treats intake as a control boundary, not a dedup feature. Validation therefore has two layers: technical integrity and operator usefulness.
 
