@@ -4,6 +4,7 @@ import {createServer} from 'node:http';
 import {createReadOnlyMcpHandler} from '../src/service/mcp/read-only.js';
 
 const calls=[];
+const RESOURCE='https://intake.example/mcp';
 const comparison={
  comparisonId:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',createdAt:'2026-11-02T11:00:00Z',
  policyVersion:'cross-source-v1',snapshots:{oneC:'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',bitrix24:'cccccccc-cccc-4ccc-8ccc-cccccccccccc'},
@@ -29,18 +30,21 @@ function auth(){
    if(!token?.startsWith('Bearer ')||token==='Bearer revoked'||blocked.has(token))
     throw Object.assign(new Error('unauthorized'),{statusCode:401});
    if(token==='Bearer dev')return {tenantId:'a',id:'dev',
-    claims:{iss:'https://idp.example',dev:true},permissions:new Set(['review.read','audit.read'])};
+    claims:{iss:'https://idp.example',aud:RESOURCE,scope:'evidence:read',dev:true},permissions:new Set(['review.read','audit.read'])};
    if(token==='Bearer no-review')return {tenantId:'a',id:'no-review',
-    claims:{iss:'https://idp.example'},permissions:new Set(['audit.read'])};
+    claims:{iss:'https://idp.example',aud:RESOURCE,scope:'evidence:read'},permissions:new Set(['audit.read'])};
    return {tenantId:token==='Bearer tenant-b'?'tenant-b':'tenant-a',
-    id:token,claims:{iss:'https://idp.example',sub:token,email_verified:true},
+    id:token,claims:{iss:'https://idp.example',sub:token,email_verified:true,
+     aud:token==='Bearer wrong-audience'?'https://wrong.example/mcp':RESOURCE,
+     scope:token==='Bearer wrong-scope'?'user:read':
+       token==='Bearer auditor'?'evidence:read evidence:values:read':'evidence:read'},
     permissions:new Set(token==='Bearer auditor'?['review.read','audit.read']:['review.read'])};
   }
  }
 }
 async function harness(run){
  const authenticator=auth();
- const handler=createReadOnlyMcpHandler({authenticator,sourceComparisonStore:store});
+ const handler=createReadOnlyMcpHandler({authenticator,sourceComparisonStore:store,resourceAudience:RESOURCE});
  const server=createServer(handler);
  await new Promise(r=>server.listen(0,'127.0.0.1',r));
  const base='http://127.0.0.1:'+server.address().port;
@@ -68,7 +72,9 @@ test('MCP handshake, list and stateless notification are protocol-compatible',as
   assert.equal(init.json.result.serverInfo.name,'intake-integrity-readonly');
   assert.equal((await post('notifications/initialized',{}, {notification:true})).status,202);
   const list=await post('tools/list');
-  assert.equal(list.json.result.tools.length,3);
+  assert.equal(list.json.result.tools.length,2);
+  const auditorList=await post('tools/list',{}, {token:'auditor'});
+  assert.equal(auditorList.json.result.tools.length,3);
   assert(list.json.result.tools.every(t=>t.annotations.readOnlyHint===true&&
    t.annotations.destructiveHint===false));
   assert.equal((await post('ping')).status,200);
@@ -111,6 +117,8 @@ test('missing or revoked bearer, dev identity, non-reviewer and browser origins 
   assert.equal((await post('tools/list',{}, {token:null})).status,401);
   assert.equal((await post('tools/list',{}, {token:'dev'})).status,403);
   assert.equal((await post('tools/list',{}, {token:'no-review'})).status,403);
+  assert.equal((await post('tools/list',{}, {token:'wrong-audience'})).status,403);
+  assert.equal((await post('tools/list',{}, {token:'wrong-scope'})).status,403);
   assert.equal((await post('tools/list',{}, {origin:'https://evil.example'})).status,403);
   authenticator.blocked.add('Bearer reviewer');
   assert.equal((await post('tools/list')).status,401);
@@ -130,7 +138,7 @@ test('malformed RPC, arbitrary methods and dangerous write-tools are rejected wi
 });
 test('backend errors are redacted from MCP responses',async()=>{
  const broken=createReadOnlyMcpHandler({authenticator:auth(),
-  sourceComparisonStore:{latestComparison:async()=>{throw Error('SQL password=internal-secret')}}});
+  sourceComparisonStore:{latestComparison:async()=>{throw Error('SQL password=internal-secret')}},resourceAudience:RESOURCE});
  const server=createServer(broken);
  await new Promise(r=>server.listen(0,'127.0.0.1',r));
  try{
