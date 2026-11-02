@@ -63,6 +63,11 @@ test('LIVE PostgreSQL >100-row paired source sync, atomic publication, review fi
    const second=await sync.findings({tenantId:a,runId:queue.runId,offset:100,limit:50});
    assert.equal(second.items.length,29);
    assert.equal((await sync.status({tenantId:a,runId:queue.runId})).status,'published');
+   await assert.rejects(()=>pool.query(`INSERT INTO sales_source_sync_pages
+     (tenant_id,run_id,source,page_index,content_sha256,record_count)
+     VALUES($1,$2,$3,$4,$5,$6)`,
+     [a,queue.runId,'1c',2,'b'.repeat(64),0]),
+     /cannot alter published or failed sync/);
    assert.equal(await sync.latestReport({tenantId:b}),null);
    await assert.rejects(()=>sync.findings({tenantId:b,runId:queue.runId}),
     /sync_published_report_not_found/);
