@@ -1,7 +1,9 @@
 import {chromium} from 'playwright';
+import {Pool} from 'pg';
 
 const base=process.env.BASE_URL||'http://127.0.0.1:8787';
 const browser=await chromium.launch({headless:true});
+const sql=process.env.DATABASE_URL?new Pool({connectionString:process.env.DATABASE_URL,max:2}):null;
 try{
  for(const vp of [{width:390,height:844},{width:1280,height:900}]){
    const context=await browser.newContext({viewport:vp});
@@ -65,8 +67,33 @@ try{
    await page.locator('#record-list .line-button').filter({hasText:'Sam Lee'}).first().click();
    await page.locator('#detail-fields').getByText('link_existing').waitFor({timeout:12000});
    await page.locator('#delivery-state').getByText(/succeeded/).waitFor({timeout:12000});
+   // This is a real DB assertion, not just the UI state. It proves a single
+   // human decision, a single transactional outbox, and one simulator receipt.
+   if(sql){
+     const q=await sql.query(`
+       SELECT e.processing_state, o.state AS outbox_state,
+         count(DISTINCT d.decision_id)::int AS decisions,
+         count(DISTINCT o.outbox_id)::int AS outboxes,
+         count(DISTINCT s.receipt_ref)::int AS provider_receipts
+       FROM sales_incoming_enquiries e
+       LEFT JOIN sales_intake_decisions d
+         ON d.tenant_id=e.tenant_id AND d.intake_id=e.intake_id
+       LEFT JOIN sales_crm_outbox_v2 o
+         ON o.tenant_id=e.tenant_id AND o.intake_id=e.intake_id
+       LEFT JOIN sandbox_crm_deliveries s
+         ON s.tenant_id=o.tenant_id AND s.operation_key=o.operation_key
+       WHERE e.tenant_id='staging-demo' AND e.source_event_key=$1
+       GROUP BY e.processing_state,o.state
+     `,[sourceKey]);
+     const row=q.rows[0];
+     if(q.rowCount!==1||row.processing_state!=='resolved'||
+       row.outbox_state!=='succeeded'||row.decisions!==1||
+       row.outboxes!==1||row.provider_receipts!==1)
+       throw new Error('Transactional backend E2E invariant failed: '+JSON.stringify(q.rows));
+     console.log('PASS persisted exactly one audited decision, outbox, and CRM simulator receipt for '+sourceKey);
+   }
    if(errors.length)throw new Error('Browser errors: '+errors.join(' | '));
    console.log('PASS real PostgreSQL browser intake at '+vp.width+'px');
    await context.close();
  }
-}finally{await browser.close()}
+}finally{await browser.close();await sql?.end()}

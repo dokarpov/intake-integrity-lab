@@ -2,7 +2,7 @@ name: test
 
 on:
   push:
-    branches: [main]
+    branches: [main, testing/postgres-integrity-2026-10-20]
     paths:
       - 'service/**'
       - 'src/**'
