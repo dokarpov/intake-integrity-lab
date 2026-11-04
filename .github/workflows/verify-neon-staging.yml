@@ -34,6 +34,17 @@ jobs:
           grep -q "Load two fictional exports and compare" /tmp/deployed-source.html
           SOURCES_AUTH=$(curl -sS -o /tmp/sources-unauthorized.json -w '%{http_code}' "$URL/api/integrity/sources/latest")
           test "$SOURCES_AUTH" = 401
+          # Unauthenticated requests cannot inspect or create synthetic customer records.
+          NO_INT_RESULT=$(curl -sS -o /tmp/intake-unauthorized.json -w '%{http_code}' "$URL/api/integrity/intakes")
+          test "$NO_INT_RESULT" = 401
+          NO_WRITE_RESULT=$(curl -sS -X POST -H 'Content-Type: application/json' --data '{"source":"qa","sourceEventKey":"anonymous-denied"}' -o /tmp/write-unauthorized.json -w '%{http_code}' "$URL/api/integrity/intakes")
+          test "$NO_WRITE_RESULT" = 401
+          NO_CRM_RESULT=$(curl -sS -X POST -H 'Content-Type: application/json' --data '{"outboxId":"00000000-0000-0000-0000-000000000000"}' -o /tmp/crm-unauthorized.json -w '%{http_code}' "$URL/api/integrity/sandbox/crm/run")
+          test "$NO_CRM_RESULT" = 401
+          # Confirm invalid public paths remain inaccessible.
+          NO_UNKNOWN_RESULT=$(curl -sS -o /tmp/unknown.json -w '%{http_code}' "$URL/api/integrity/nonexistent")
+          test "$NO_UNKNOWN_RESULT" = 401
+          echo "ANONYMOUS READ, WRITE AND CRM SIMULATOR ACCESS DENIED"
           HTTP_CODE=$(curl -sS -o /tmp/unauthorized.json -w '%{http_code}' "$URL/api/me")
           test "$HTTP_CODE" = 401
           python3 - <<'PY'
