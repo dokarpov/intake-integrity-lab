@@ -38,6 +38,14 @@ try{
    await page.locator('#review-action').selectOption('link_existing');
    await page.locator('#review-person').selectOption({label:'Sam Lee · Studio North'});
    await page.locator('#review-reason').fill('Fictional callback confirms Studio North for this sandbox enquiry.');
+   // P0: an unverified reviewer action must not change the PostgreSQL decision or queue.
+   await page.getByRole('button',{name:'Record my decision in PostgreSQL'}).click();
+   await page.locator('#decision-message')
+     .getByText(/Confirm which fictional evidence you want the sandbox to simulate/)
+     .waitFor({timeout:7000});
+   await page.locator('#delivery-state')
+     .getByText('No CRM delivery authorized or queued.')
+     .waitFor({timeout:7000});
    await page.locator('#simulate-identity').check();
    await page.locator('#simulate-consent').check();
    const apiFailures=[];
