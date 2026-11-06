@@ -18,7 +18,7 @@ v0.6 closes the previous gaps around an authenticated service boundary, team-rev
 ## Engineering hardening still worth doing
 
 - OpenTelemetry traces/metrics for API, ledger append, WORM sealing and delivery-worker latency.
-- A gateway/distributed rate limiter instead of relying only on the in-process reference limiter.
+- A gateway/distributed rate limiter instead of relying only on the in-process reference limiter. The in-process limiter is capped at `maxKeys` and fails closed for new keys when full, but **this does not make it distributed or DDoS-proof**; multiple replicas must share enforcement upstream.
 - Managed migration tooling and rollback/runbook discipline instead of raw bootstrap SQL.
 - Dependency lockfile, SBOM, SAST/dependency/secret scanning and signed release provenance.
 - Dedicated encrypted/TTL outbox payload storage if the chosen PostgreSQL threat model requires application-layer encryption for transient CRM payloads.
