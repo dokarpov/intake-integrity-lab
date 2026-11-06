@@ -10,6 +10,7 @@ const cases=[
 try{
  for(const vp of [{width:390,height:844},{width:1280,height:900}]){
   const ctx=await browser.newContext({viewport:vp});
+  if(process.env.STAGING_ACCESS_TOKEN)await ctx.addInitScript(token=>{sessionStorage.setItem('intake-staging-access',token)},process.env.STAGING_ACCESS_TOKEN);
   for(const scenario of cases){
    const page=await ctx.newPage(),errors=[];
    page.on('pageerror',e=>errors.push(e.message));

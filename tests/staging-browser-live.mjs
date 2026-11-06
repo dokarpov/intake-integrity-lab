@@ -7,6 +7,7 @@ const sql=process.env.DATABASE_URL?new Pool({connectionString:process.env.DATABA
 try{
  for(const vp of [{width:390,height:844},{width:1280,height:900}]){
    const context=await browser.newContext({viewport:vp});
+   if(process.env.STAGING_ACCESS_TOKEN) await context.addInitScript(token=>{sessionStorage.setItem('intake-staging-access',token)},process.env.STAGING_ACCESS_TOKEN);
    const page=await context.newPage(),errors=[];
    page.on('pageerror',x=>errors.push(x.message));
    await page.goto(base+'/integrity',{waitUntil:'domcontentloaded'});
@@ -101,6 +102,11 @@ try{
      console.log('PASS persisted exactly one audited decision, outbox, and CRM simulator receipt for '+sourceKey);
    }
    if(errors.length)throw new Error('Browser errors: '+errors.join(' | '));
+   if(process.env.E2E_SCREENSHOT_DIR){
+     const {mkdir}=await import('node:fs/promises');
+     await mkdir(process.env.E2E_SCREENSHOT_DIR,{recursive:true});
+     await page.screenshot({path:process.env.E2E_SCREENSHOT_DIR+'/review-'+vp.width+'.png',fullPage:true});
+   }
    console.log('PASS real PostgreSQL browser intake at '+vp.width+'px');
    await context.close();
  }
