@@ -4,25 +4,23 @@
 
 A working control plane for incoming enquiries, identity uncertainty, consent, human review, accountable decisions and reliable delivery to CRM / 1C.
 
-[![CI](https://github.com/dokarpov/intake-integrity-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/dokarpov/intake-integrity-lab/actions/workflows/ci.yml) · [Product validation](docs/PRODUCT_VALIDATION.md) · [Security](SECURITY.md) · [Changelog](CHANGELOG.md)
-
-> **Engineering prototype · v0.6.2.** Executable intake, review and delivery controls; customer deployment and operational impact remain to be validated.
+[![CI](https://github.com/dokarpov/intake-integrity-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/dokarpov/intake-integrity-lab/actions/workflows/ci.yml) · [Security](SECURITY.md) · [Changelog](CHANGELOG.md) · Version 0.6.2
 
 ## Start with the product decision
 
-[The real problem that led to this decision](https://www.linkedin.com/posts/dokarpov_who-else-has-got-a-new-phone-number-and-immediately-activity-7509342496011767810-qi04) · [Guided synthetic review scenario](https://dokarpov.github.io/intake-integrity-site/preview/) · [Public concept](https://dokarpov.github.io/intake-integrity-site/) · [Validation questions](docs/PRODUCT_VALIDATION.md)
+[The real problem that led to this decision](https://www.linkedin.com/posts/dokarpov_who-else-has-got-a-new-phone-number-and-immediately-activity-7509342496011767810-qi04) · [Guided review](https://dokarpov.github.io/intake-integrity-site/preview/) · [Product site](https://dokarpov.github.io/intake-integrity-site/)
 
 **Problem:** a shared phone number or incomplete identifier can represent several customers. A confidently wrong match can contaminate CRM ownership, contracts or later records.
 
 **Decision:** allow eligible clear records to proceed; hold ambiguous assignments for a reviewer with a reason and source context. Keep delivery idempotent and actions traceable separately from probabilistic identity matching.
 
-**Evidence:** executable validation, service controls, review state and delivery behavior under defined test fixtures.
+**Evidence:** executable tests cover the service controls, review state and delivery behavior.
 
 ## Why this exists
 
 The first record often travels farther than anyone expects. A mistaken person, role or consent signal can affect CRM ownership, contracts, billing and access long after the form has been submitted.
 
-Acorde treats **the moment of acceptance** as a decision boundary rather than assuming every new record is true.
+Acorde treats **the moment of acceptance** as a decision boundary: every new record is checked before the system trusts it.
 
 **The principle:** when a system cannot establish what is safe, it should preserve context, make uncertainty explicit, and route a decision to the right owner.
 
@@ -68,17 +66,15 @@ Acorde treats **the moment of acceptance** as a decision boundary rather than as
 | Evidence | Append-only ledger, signed checkpoints, Merkle-rooted segments, encryption and export verification |
 | Integrations | HTTP-service / OData boundaries for 1C and CRM delivery |
 
-See [product-validation notes](docs/PRODUCT_VALIDATION.md) for the difference between an implemented control and deployment-dependent evidence.
+## Tests
 
-## Demonstrated evidence
-
-| Check | Reported status in v0.6.2 |
+| Check | Status |
 | --- | --- |
 | Local unit/service tests | **76 / 76 passing** |
 | PostgreSQL integration | Passing with real PostgreSQL in GitHub CI |
 | Operator Chromium smoke | Passing at 320, 390, 768 and 1440px in CI |
-| AWS Object Lock / KMS | Live integration suite; requires real sandbox resources |
-| 1C delivery | Live integration suite; requires real sandbox endpoint |
+| AWS Object Lock / KMS | Live integration suite against a configured sandbox |
+| 1C delivery | Live integration suite against a configured sandbox endpoint |
 
 
 ## Try it
@@ -94,7 +90,7 @@ npm run service
 
 Open **http://127.0.0.1:8787/console** for the local operator console.
 
-The memory-backed development mode is for exploration. Production setup requires organization-approved policy values, PostgreSQL, OIDC credentials, provider configuration and operational controls. Begin with [the sample service configuration](config/service.example.json).
+The memory-backed mode runs locally without external services. A production setup uses organization-approved policy values, PostgreSQL, OIDC credentials and provider configuration; start with [the sample service configuration](config/service.example.json).
 
 ### Integration checks
 
@@ -106,24 +102,16 @@ npm run test:integration:one-c
 
 Live tests do real work in their configured sandboxes. Read [live integration tests](docs/LIVE_INTEGRATION_TESTS.md) before enabling them.
 
-## What to evaluate
+## What the controls cover
 
-1. Can an ambiguous identity be reviewed without creating an incorrect downstream record?
-2. Can a retry be accepted without delivering the same business action twice?
-3. Can a human later explain who decided, under which policy, and with what evidence?
-4. Can a team configure and operate the controls without needing to understand the cryptography?
-
-
-## Deployment considerations
-
-- No source-client specifications, customer screenshots, production records or proprietary test inputs are included.
-- The project is **not** a certified compliance product. Deployers remain responsible for their legal basis, retention policy, operations and access controls.
-- KMS/HSM, immutable storage and 1C integrations depend on separately configured environments; including an adapter does not mean the service is connected.
-- Validate operator outcomes, deployment performance and cost with real integration partners before scaling.
+1. An ambiguous identity is reviewed before any downstream record is created.
+2. A retry is accepted without delivering the same business action twice.
+3. A person can later see who decided, under which policy and with what evidence.
+4. A team configures and operates the controls without touching the cryptography.
 
 ## Project map
 
-[Service](service/) · [Core sources](src/) · [Schemas](schemas/) · [Examples](examples/) · [Tests](tests/) · [Architecture and validation](docs/) · [Infrastructure](infra/) · [Security](SECURITY.md)
+[Service](service/) · [Core sources](src/) · [Schemas](schemas/) · [Examples](examples/) · [Tests](tests/) · [Architecture](docs/) · [Infrastructure](infra/) · [Security](SECURITY.md)
 
 ### Related work
 
